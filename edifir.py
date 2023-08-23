@@ -35,8 +35,7 @@ class EdifIR:
                 sys.exit(1)
             if len(driverpins) == 0: continue
             driver = driverpins[0]
-            drivers = []
-            consumers = []
+            receiverids = []
             for p in w.pins:
                 ports = list( p.get_ports() )
                 if len(ports) != 1:
@@ -52,17 +51,18 @@ class EdifIR:
                 pid = self.pinid(iid,port.name)
                 if p == driver:
                     functor = 'opin'
-                    drivers += [pid]
+                    driverid = pid
                 else:
                     functor = 'ipin'
-                    consumers += [pid]
+                    receiverids += [pid]
                 term = PTerm(functor,[pid,iid,PAtom(port.name)])
                 print(str(term)+'.')
                 self.printevents(pid)
+            term = PTerm('net',[driverid,PList(receiverids)])
+            print(str(term)+'.')
     def print2prolog(self):
         self.printopi()
         self.printpins()
-
     def __init__(self, filename):
         self.netlist = sdn.parse(filename)
         flatten(self.netlist)
