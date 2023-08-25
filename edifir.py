@@ -48,16 +48,20 @@ class EdifIR:
                     sys.exit(1)
                 instance = instances[0]
                 iid = self.instid(self.instname(instance))
-                pid = self.pinid(iid,port.name)
+                pinindex = str(p.index()) if isinstance(p,sdn.OuterPin) else 'TODO' # For inner pin, have to do something else
+                pinname = port.name + "_" + pinindex
+                pinvisited = (iid,pinname) in self.pinids
+                pid = self.pinid(iid,pinname) # TODO: print 1 pin only once, don't print if it was already in the table
                 if p == driver:
                     functor = 'opin'
                     driverid = pid
                 else:
                     functor = 'ipin'
                     receiverids += [pid]
-                term = PTerm(functor,[pid,iid,PAtom(port.name)])
-                print(str(term)+'.')
-                self.printevents(pid)
+                if not pinvisited:
+                    term = PTerm(functor,[pid,iid,PAtom(pinname)])
+                    print(str(term)+'.')
+                    self.printevents(pid)
             term = PTerm('net',[driverid,PList(receiverids)])
             print(str(term)+'.')
     def print2prolog(self):
