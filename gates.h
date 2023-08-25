@@ -16,13 +16,58 @@ class Gate
 {
 };
 
+class CARRY4 : public Gate
+{
+public:
+    CARRY4(unsigned opid, Parmap& parmap)
+    {
+    }
+};
+
+class FDCE : public Gate
+{
+public:
+    FDCE(unsigned opid, Parmap& parmap)
+    {
+    }
+};
+
+template<bool val> class Const : public Gate
+{
+public:
+    Const(unsigned opid, Parmap& parmap)
+    {
+    }
+};
+
+class IBUF : public Gate
+{
+public:
+    IBUF(unsigned opid, Parmap& parmap)
+    {
+    }
+};
+
 template<int suf> class LUT : public Gate
 {
-    const Parmap _defaults = {
-        { "INIT", "1" },
-        };
 public:
     LUT(unsigned opid, Parmap& parmap)
+    {
+    }
+};
+
+class OBUF : public Gate
+{
+public:
+    OBUF(unsigned opid, Parmap& parmap)
+    {
+    }
+};
+
+class OBUFT : public Gate
+{
+public:
+    OBUFT(unsigned opid, Parmap& parmap)
     {
     }
 };
@@ -34,11 +79,53 @@ typedef struct {
 } GateInfo;
 
 typedef tuple<string,unsigned,string,list<tuple<string,string>>> t_opi;
+#define QUOTE(STR) #STR
 #define CREATE(GATETYP) [](unsigned opid, Parmap& parmap) { return new GATETYP(opid,parmap); }
+#define DEFLUT(SUF) { QUOTE(LUT##SUF), { CREATE(LUT<SUF>), \
+    { { "SOFT_HLUTNM",""}, { "box_type",""} }, \
+    { "INIT" }, \
+    } \
+    }
 class GateFactory
 {
 const map< string, GateInfo  > _gateinfomap = {
-    { "LUT1", { CREATE(LUT<1>),
+    { "CARRY4", { CREATE(CARRY4),
+        { {"ADDER_THRESHOLD",""} },
+        {},
+        }
+    },
+    { "FDCE", { CREATE(FDCE),
+        { {"IS_C_INVERTED","1'b0"} },
+        {"INIT"},
+        }
+    },
+    { "GND", { CREATE(Const<false>),
+        {},
+        {},
+        }
+    },
+    { "IBUF", { CREATE(IBUF),
+        {},
+        {"CCIO_EN"},
+        }
+    },
+    DEFLUT(1),
+    DEFLUT(2),
+    DEFLUT(3),
+    DEFLUT(4),
+    DEFLUT(5),
+    DEFLUT(6),
+    { "OBUF", { CREATE(OBUF),
+        {},
+        {},
+        }
+    },
+    { "OBUFT", { CREATE(OBUFT),
+        {},
+        {},
+        }
+    },
+    { "VCC", { CREATE(Const<true>),
         {},
         {},
         }
