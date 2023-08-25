@@ -76,30 +76,34 @@ typedef struct {
     const function< Gate* (unsigned,Parmap&) > creator;
     const Parmap defaults;
     const set<string> nodefaults;
+    const set<string> ipins;
+    const set<string> opins;
 } GateInfo;
 
 typedef tuple<string,unsigned,string,list<tuple<string,string>>> t_opi;
-#define QUOTE(STR) #STR
 #define CREATE(GATETYP) [](unsigned opid, Parmap& parmap) { return new GATETYP(opid,parmap); }
-#define DEFLUT(SUF) { QUOTE(LUT##SUF), { CREATE(LUT<SUF>), \
-    { { "SOFT_HLUTNM",""}, { "box_type",""} }, \
-    { "INIT" }, \
-    } \
-    }
 class GateFactory
 {
+    const map<string,string> _lutdefaults = { { "SOFT_HLUTNM",""}, { "box_type",""} };
+    const set<string> _lutnondefaults = { "INIT" };
 const map< string, GateInfo  > _gateinfomap = {
     { "CARRY4", { CREATE(CARRY4),
         { {"ADDER_THRESHOLD",""} },
+        {},
+        {},
         {},
         }
     },
     { "FDCE", { CREATE(FDCE),
         { {"IS_C_INVERTED","1'b0"} },
         {"INIT"},
+        {},
+        {},
         }
     },
     { "GND", { CREATE(Const<false>),
+        {},
+        {},
         {},
         {},
         }
@@ -107,15 +111,55 @@ const map< string, GateInfo  > _gateinfomap = {
     { "IBUF", { CREATE(IBUF),
         {},
         {"CCIO_EN"},
+        {},
+        {},
         }
     },
-    DEFLUT(1),
-    DEFLUT(2),
-    DEFLUT(3),
-    DEFLUT(4),
-    DEFLUT(5),
-    DEFLUT(6),
+    { "LUT1", { CREATE(LUT<1>),
+        _lutdefaults,
+        _lutnondefaults,
+        {},
+        {},
+        }
+    },
+    { "LUT2", { CREATE(LUT<2>),
+        _lutdefaults,
+        _lutnondefaults,
+        {},
+        {},
+        }
+    },
+    { "LUT3", { CREATE(LUT<3>),
+        _lutdefaults,
+        _lutnondefaults,
+        {},
+        {},
+        }
+    },
+    { "LUT4", { CREATE(LUT<4>),
+        _lutdefaults,
+        _lutnondefaults,
+        {},
+        {},
+        }
+    },
+    { "LUT5", { CREATE(LUT<5>),
+        _lutdefaults,
+        _lutnondefaults,
+        {},
+        {},
+        }
+    },
+    { "LUT6", { CREATE(LUT<6>),
+        _lutdefaults,
+        _lutnondefaults,
+        {},
+        {},
+        }
+    },
     { "OBUF", { CREATE(OBUF),
+        {},
+        {},
         {},
         {},
         }
@@ -123,9 +167,13 @@ const map< string, GateInfo  > _gateinfomap = {
     { "OBUFT", { CREATE(OBUFT),
         {},
         {},
+        {},
+        {},
         }
     },
     { "VCC", { CREATE(Const<true>),
+        {},
+        {},
         {},
         {},
         }
