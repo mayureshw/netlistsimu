@@ -48,8 +48,10 @@ class EdifIR:
                     sys.exit(1)
                 instance = instances[0]
                 iid = self.instid(self.instname(instance))
-                pinindex = str(p.index()) if isinstance(p,sdn.OuterPin) else 'TODO' # For inner pin, have to do something else
-                pinname = port.name + "_" + pinindex
+                pinname = port.name
+                if '[' in port.name:
+                    pinindex = str(p.index()) if isinstance(p,sdn.OuterPin) else 'TODO' # For inner pin, have to do something else
+                    pinname += "_" + pinindex
                 pinvisited = (iid,pinname) in self.pinids
                 pid = self.pinid(iid,pinname) # TODO: print 1 pin only once, don't print if it was already in the table
                 if p == driver:
