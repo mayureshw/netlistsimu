@@ -15,7 +15,7 @@ class EdifIR:
             iid = self.instid(iname)
             typ = PAtom(inst.reference.name)
             generics = PList(
-                PTuple([ PAtom(propd[k]) for k in ['identifier','value'] ])
+                PTuple([ PAtom(str(propd[k])) for k in ['identifier','value'] ])
                 for propd in inst.data.get('EDIF.properties',[])
                 )
             term = PTerm('opi',[iid, typ, generics])
