@@ -90,8 +90,8 @@ const map< string, GateInfo  > _gateinfomap = {
     { "CARRY4", { CREATE(CARRY4),
         { {"ADDER_THRESHOLD",""} },
         {},
-        {},
-        {},
+        { {"CYINIT",1}, {"CI",1}, {"S",4}, {"DI",4} },
+        { {"CO",4}, {"O",4} },
         }
     },
     { "FDCE", { CREATE(FDCE),

@@ -48,7 +48,7 @@ class EdifIR:
                     sys.exit(1)
                 instance = instances[0]
                 iid = self.instid(self.instname(instance))
-                portname = port.name
+                portname = port.name if port.is_scalar else port.name.partition('[')[0]
                 pinindex = p.index()
                 pinvisited = (iid,portname,pinindex) in self.pinids
                 pid = self.pinid(iid,portname,pinindex)
