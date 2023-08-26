@@ -65,7 +65,7 @@ class EdifIR:
     def processWire(self,w):
         driver = self.wire2driver(w)
         if driver == None: return
-        if not isinstance(driver,sdn.OuterPin): return
+        if not isinstance(driver,sdn.OuterPin): return # TODO: index() fails on InnerPin
         driverid = self.pininst2id( driver )
         receiverids = [ self.pininst2id(p)
             for p in w.pins if p != driver and isinstance(p,sdn.OuterPin) ]
