@@ -76,8 +76,8 @@ typedef struct {
     const function< Gate* (unsigned,Parmap&) > creator;
     const Parmap defaults;
     const set<string> nodefaults;
-    const set<string> ipins;
-    const set<string> opins;
+    const map<string,unsigned> iports;
+    const map<string,unsigned> oports;
 } GateInfo;
 
 typedef tuple<string,unsigned,string,list<tuple<string,string>>> t_opi;
@@ -97,85 +97,85 @@ const map< string, GateInfo  > _gateinfomap = {
     { "FDCE", { CREATE(FDCE),
         { {"IS_C_INVERTED","1'b0"} },
         {"INIT"},
-        {"C","CE","CLR","D"},
-        {"Q"},
+        { {"C",1},{"CE",1},{"CLR",1},{"D",1} },
+        { {"Q",1} },
         }
     },
     { "GND", { CREATE(Const<false>),
         {},
         {},
         {},
-        {"G"},
+        { {"G",1} },
         }
     },
     { "IBUF", { CREATE(IBUF),
         {},
         {"CCIO_EN"},
-        {"I"},
-        {"O"},
+        { {"I",1} },
+        { {"O",1} },
         }
     },
     { "LUT1", { CREATE(LUT<1>),
         _lutdefaults,
         _lutnondefaults,
-        {"I0"},
-        {"O"},
+        { {"I0",1} },
+        { {"O",1} },
         }
     },
     { "LUT2", { CREATE(LUT<2>),
         _lutdefaults,
         _lutnondefaults,
-        {"I0","I1"},
-        {"O"},
+        { {"I0",1}, {"I1",1} },
+        { {"O",1} },
         }
     },
     { "LUT3", { CREATE(LUT<3>),
         _lutdefaults,
         _lutnondefaults,
-        {"I0","I1","I2"},
-        {"O"},
+        { {"I0",1}, {"I1",1}, {"I2",1} },
+        { {"O",1} },
         }
     },
     { "LUT4", { CREATE(LUT<4>),
         _lutdefaults,
         _lutnondefaults,
-        {"I0","I1","I2","I3"},
-        {"O"},
+        { {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1} },
+        { {"O",1} },
         }
     },
     { "LUT5", { CREATE(LUT<5>),
         _lutdefaults,
         _lutnondefaults,
-        {"I0","I1","I2","I3","I4"},
-        {"O"},
+        { {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1}, {"I4",1} },
+        { {"O",1} },
         }
     },
     { "LUT6", { CREATE(LUT<6>),
         _lutdefaults,
         _lutnondefaults,
-        {"I0","I1","I2","I3","I4","I5"},
-        {"O"},
+        { {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1}, {"I4",1}, {"I5",1} },
+        { {"O",1} },
         }
     },
     { "OBUF", { CREATE(OBUF),
         {},
         {},
-        {"I"},
-        {"O"},
+        { {"I",1} },
+        { {"O",1} },
         }
     },
     { "OBUFT", { CREATE(OBUFT),
         {},
         {},
-        {"I","T"},
-        {"O"},
+        { {"I",1}, {"T",1} },
+        { {"O",1} },
         }
     },
     { "VCC", { CREATE(Const<true>),
         {},
         {},
         {},
-        {"P"},
+        { {"P",1} },
         }
     },
 };
