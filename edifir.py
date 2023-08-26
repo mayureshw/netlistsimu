@@ -6,7 +6,7 @@ from itertools import groupby
 
 class EdifIR:
     def instid(self,instname): return self.instids.setdefault(instname,len(self.instids))
-    def pinid(self,iid,portname): return self.pinids.setdefault((iid,portname),len(self.pinids))
+    def pinid(self,iid,portname,pinindex): return self.pinids.setdefault((iid,portname,pinindex),len(self.pinids))
     def eventid(self,pin,val): return self.eventids.setdefault((pin,val),len(self.eventids))
     def instname(self,inst): return inst.data['EDIF.identifier']
     def printopi(self):
@@ -36,7 +36,7 @@ class EdifIR:
             if len(driverpins) == 0: continue
             driver = driverpins[0]
             receiverids = []
-            for p in w.pins:
+            for p in [ p for p in w.pins if isinstance(p,sdn.OuterPin) ]:
                 ports = list( p.get_ports() )
                 if len(ports) != 1:
                     print('len(ports)!=1 for pin',p)
@@ -48,12 +48,10 @@ class EdifIR:
                     sys.exit(1)
                 instance = instances[0]
                 iid = self.instid(self.instname(instance))
-                pinname = port.name
-                if '[' in port.name:
-                    pinindex = str(p.index()) if isinstance(p,sdn.OuterPin) else 'TODO' # For inner pin, have to do something else
-                    pinname += "_" + pinindex
-                pinvisited = (iid,pinname) in self.pinids
-                pid = self.pinid(iid,pinname) # TODO: print 1 pin only once, don't print if it was already in the table
+                portname = port.name
+                pinindex = p.index()
+                pinvisited = (iid,portname,pinindex) in self.pinids
+                pid = self.pinid(iid,portname,pinindex)
                 if p == driver:
                     functor = 'opin'
                     driverid = pid
@@ -61,7 +59,7 @@ class EdifIR:
                     functor = 'ipin'
                     receiverids += [pid]
                 if not pinvisited:
-                    term = PTerm(functor,[pid,iid,PAtom(pinname)])
+                    term = PTerm(functor,[pid,iid,PAtom(portname),pinindex])
                     print(str(term)+'.')
                     self.printevents(pid)
             term = PTerm('net',[driverid,PList(receiverids)])
