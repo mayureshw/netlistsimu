@@ -2,6 +2,7 @@
 #define _GATES_H
 
 #include <map>
+#include <bitset>
 #include <tuple>
 #include <set>
 #include <string>
@@ -39,6 +40,7 @@ public:
         validateIndex(index);
         return _eids[index];
     }
+    virtual ~Pin() {}
 };
 
 class IPin : public Pin
@@ -57,7 +59,8 @@ public:
 
 template<unsigned W> class Port : public PortBase
 {
-    Pin _pins[W];
+protected:
+    Pin *_pins[W];
 public:
     Pin* getPin(unsigned index)
     {
@@ -66,16 +69,30 @@ public:
             cout << "getPin received index > W " << index << " " << W << endl;
             exit(1);
         }
-        return &_pins[index];
+        return _pins[index];
+    }
+    ~Port()
+    {
+        for(int i=0; i<W; i++) delete _pins[i];
     }
 };
 
 template<unsigned W> class IPort : public Port<W>
 {
+public:
+    IPort<W>()
+    {
+        for(int i=0; i<W; i++) Port<W>::_pins[i] = new IPin();
+    }
 };
 
 template<unsigned W> class OPort : public Port<W>
 {
+public:
+    OPort<W>()
+    {
+        for(int i=0; i<W; i++) Port<W>::_pins[i] = new OPin();
+    }
 };
 
 class Gate
@@ -85,6 +102,7 @@ protected:
 public:
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
+    virtual ~Gate() {}
 };
 
 typedef map<string,PortBase*> Portmap;
