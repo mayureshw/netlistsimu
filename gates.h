@@ -15,6 +15,19 @@ typedef list<tuple<string,string>> Parlist;
 
 class Pin
 {
+    inline static const unsigned EVENTTYPS = 2;
+protected:
+    unsigned _eids[EVENTTYPS];
+public:
+    void setEid(unsigned index, unsigned eid)
+    {
+        if ( index >= EVENTTYPS )
+        {
+            cout << "Event type exceeds allowed number " << eid << " " << index << " " << EVENTTYPS << endl;
+            exit(1);
+        }
+        _eids[index] = eid;
+    }
 };
 
 class IPin : public Pin
