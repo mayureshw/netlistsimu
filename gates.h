@@ -11,178 +11,93 @@ using namespace std;
 #include "xsb2cpp.h"
 
 typedef map<string,string> Parmap;
+typedef list<tuple<string,string>> Parlist;
 
 class Gate
 {
+protected:
+    unsigned _opid;
 };
 
+#define DEFPARM static inline const Parmap _defaults =
+#define NODEFPARM static inline const set<string> _nodefaults =
 class CARRY4 : public Gate
 {
-public:
-    CARRY4(unsigned opid, Parmap& parmap)
-    {
-    }
+protected:
+    DEFPARM   { {"ADDER_THRESHOLD",""} };
+    NODEFPARM {};
+    //{ {"CYINIT",1}, {"CI",1}, {"S",4}, {"DI",4} },
+    //{ {"CO",4}, {"O",4} },
 };
 
 class FDCE : public Gate
 {
-public:
-    FDCE(unsigned opid, Parmap& parmap)
-    {
-    }
+protected:
+    DEFPARM   { {"IS_C_INVERTED","1'b0"} };
+    NODEFPARM {"INIT"};
+    //{ {"C",1},{"CE",1},{"CLR",1},{"D",1} },
+    //{ {"Q",1} },
 };
 
-template<bool val> class Const : public Gate
+class GND : public Gate
 {
-public:
-    Const(unsigned opid, Parmap& parmap)
-    {
-    }
+protected:
+    DEFPARM   {};
+    NODEFPARM {};
+    //{},
+    //{ {"G",1} },
 };
 
 class IBUF : public Gate
 {
-public:
-    IBUF(unsigned opid, Parmap& parmap)
-    {
-    }
+protected:
+    DEFPARM   {};
+    NODEFPARM {"CCIO_EN"};
+    //{ {"I",1} },
+    //{ {"O",1} },
 };
 
 template<int suf> class LUT : public Gate
 {
-public:
-    LUT(unsigned opid, Parmap& parmap)
-    {
-    }
+protected:
+    DEFPARM   { { "SOFT_HLUTNM",""}, { "box_type",""} };
+    NODEFPARM { "INIT" };
+    //{ {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1}, {"I4",1}, {"I5",1} },
+    //{ {"O",1} },
 };
 
 class OBUF : public Gate
 {
-public:
-    OBUF(unsigned opid, Parmap& parmap)
-    {
-    }
+protected:
+    DEFPARM   {};
+    NODEFPARM {};
+    //{ {"I",1} },
+    //{ {"O",1} },
 };
 
 class OBUFT : public Gate
 {
-public:
-    OBUFT(unsigned opid, Parmap& parmap)
-    {
-    }
+protected:
+    DEFPARM   {};
+    NODEFPARM {};
+    //{ {"I",1}, {"T",1} },
+    //{ {"O",1} },
 };
 
-typedef struct {
-    const function< Gate* (unsigned,Parmap&) > creator;
-    const Parmap defaults;
-    const set<string> nodefaults;
-    const map<string,unsigned> iports;
-    const map<string,unsigned> oports;
-} GateInfo;
-
-typedef tuple<string,unsigned,string,list<tuple<string,string>>> t_opi;
-#define CREATE(GATETYP) [](unsigned opid, Parmap& parmap) { return new GATETYP(opid,parmap); }
-class GateFactory
+class VCC : public Gate
 {
-    const map<string,string> _lutdefaults = { { "SOFT_HLUTNM",""}, { "box_type",""} };
-    const set<string> _lutnondefaults = { "INIT" };
-const map< string, GateInfo  > _gateinfomap = {
-    { "CARRY4", { CREATE(CARRY4),
-        { {"ADDER_THRESHOLD",""} },
-        {},
-        { {"CYINIT",1}, {"CI",1}, {"S",4}, {"DI",4} },
-        { {"CO",4}, {"O",4} },
-        }
-    },
-    { "FDCE", { CREATE(FDCE),
-        { {"IS_C_INVERTED","1'b0"} },
-        {"INIT"},
-        { {"C",1},{"CE",1},{"CLR",1},{"D",1} },
-        { {"Q",1} },
-        }
-    },
-    { "GND", { CREATE(Const<false>),
-        {},
-        {},
-        {},
-        { {"G",1} },
-        }
-    },
-    { "IBUF", { CREATE(IBUF),
-        {},
-        {"CCIO_EN"},
-        { {"I",1} },
-        { {"O",1} },
-        }
-    },
-    { "LUT1", { CREATE(LUT<1>),
-        _lutdefaults,
-        _lutnondefaults,
-        { {"I0",1} },
-        { {"O",1} },
-        }
-    },
-    { "LUT2", { CREATE(LUT<2>),
-        _lutdefaults,
-        _lutnondefaults,
-        { {"I0",1}, {"I1",1} },
-        { {"O",1} },
-        }
-    },
-    { "LUT3", { CREATE(LUT<3>),
-        _lutdefaults,
-        _lutnondefaults,
-        { {"I0",1}, {"I1",1}, {"I2",1} },
-        { {"O",1} },
-        }
-    },
-    { "LUT4", { CREATE(LUT<4>),
-        _lutdefaults,
-        _lutnondefaults,
-        { {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1} },
-        { {"O",1} },
-        }
-    },
-    { "LUT5", { CREATE(LUT<5>),
-        _lutdefaults,
-        _lutnondefaults,
-        { {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1}, {"I4",1} },
-        { {"O",1} },
-        }
-    },
-    { "LUT6", { CREATE(LUT<6>),
-        _lutdefaults,
-        _lutnondefaults,
-        { {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1}, {"I4",1}, {"I5",1} },
-        { {"O",1} },
-        }
-    },
-    { "OBUF", { CREATE(OBUF),
-        {},
-        {},
-        { {"I",1} },
-        { {"O",1} },
-        }
-    },
-    { "OBUFT", { CREATE(OBUFT),
-        {},
-        {},
-        { {"I",1}, {"T",1} },
-        { {"O",1} },
-        }
-    },
-    { "VCC", { CREATE(Const<true>),
-        {},
-        {},
-        {},
-        { {"P",1} },
-        }
-    },
+protected:
+    DEFPARM   {};
+    NODEFPARM {};
+    //{},
+    //{ {"P",1} },
 };
-    map< unsigned, Gate* > _gatemap;
-    void mergeDefaults(Parmap& parmap, const Parmap& defaults)
+
+template<typename T> class GateMethods : public T
+{
+    void mergeDefaults(Parmap& parmap)
     {
-        for(auto pv:defaults)
+        for(auto pv:T::_defaults)
         {
             auto p = pv.first;
             auto it = parmap.find(p);
@@ -193,6 +108,55 @@ const map< string, GateInfo  > _gateinfomap = {
             }
         }
     }
+    void validateParmap(Parmap& parmap)
+    {
+        auto expparams = T::_defaults.size() + T::_nodefaults.size();
+        auto actualparams = parmap.size();
+        if ( expparams != actualparams )
+        {
+            cout << "Generic parameter count mismatch for opid:" << Gate::_opid
+                << " expected:" << expparams << " actual:" << actualparams << endl;
+            exit(1);
+        }
+    }
+    void processParmap(Parlist& parlist)
+    {
+        // We don't store the parmap, deal with it in the constructor
+        Parmap parmap;
+        for(auto pv:parlist)
+            parmap.emplace( get<0>(pv), get<1>(pv) );
+        mergeDefaults(parmap);
+        validateParmap(parmap);
+    }
+public:
+    GateMethods<T>(unsigned opid, Parlist& parlist)
+    {
+        Gate::_opid = opid;
+        processParmap(parlist);
+    }
+};
+
+typedef tuple<string,unsigned,string,Parlist> t_opi;
+#define CREATE(GATETYP,CLS) { #GATETYP, [](unsigned opid, Parlist& parlist) { return new GateMethods<CLS>(opid,parlist); } }
+#define CREATE1(GATETYP) CREATE(GATETYP,GATETYP)
+class GateFactory
+{
+    const map< string, function< Gate* (unsigned,Parlist&) > > _creators = {
+        CREATE1( CARRY4 ),
+        CREATE1( FDCE   ),
+        CREATE1( GND    ),
+        CREATE1( IBUF   ),
+        CREATE1( OBUF   ),
+        CREATE1( OBUFT  ),
+        CREATE1( VCC    ),
+        CREATE( LUT1, LUT<1> ),
+        CREATE( LUT2, LUT<2> ),
+        CREATE( LUT3, LUT<3> ),
+        CREATE( LUT4, LUT<4> ),
+        CREATE( LUT5, LUT<5> ),
+        CREATE( LUT6, LUT<6> ),
+    };
+    map< unsigned, Gate* > _gatemap;
     void process_opi(t_opi& opit)
     {
         auto opid = get<1>(opit);
@@ -203,27 +167,15 @@ const map< string, GateInfo  > _gateinfomap = {
             exit(1);
         }
         auto optyp = get<2>(opit);
-        auto it2 = _gateinfomap.find(optyp);
-        if ( it2 == _gateinfomap.end() )
+        auto it2 = _creators.find(optyp);
+        if ( it2 == _creators.end() )
         {
             cout << "Unknown gate type: " << optyp << endl;
-            return; // exit(1);
+            exit(1);
         }
-        auto gateinfo = it2->second;
+        auto creator = it2->second;
         auto parlist = get<3>(opit);
-        Parmap parmap;
-        for(auto pv:parlist)
-            parmap.emplace( get<0>(pv), get<1>(pv) );
-        mergeDefaults(parmap, gateinfo.defaults);
-        auto expparams = gateinfo.defaults.size() + gateinfo.nodefaults.size();
-        auto actualparams = parmap.size();
-        if ( expparams != actualparams )
-        {
-            cout << "Generic parameter count mismatch for opid:" << opid
-                << " expected:" << expparams << " actual:" << actualparams << endl;
-            return; // exit(1);
-        }
-        auto gate = gateinfo.creator(opid,parmap);
+        auto gate = creator(opid,parlist);
         _gatemap.emplace(opid,gate);
     }
 public:
