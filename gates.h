@@ -46,7 +46,7 @@ public:
 
 template<unsigned W> class Port : public PortBase
 {
-    Pin *_pins[W];
+    Pin _pins[W];
 public:
     Pin* getPin(unsigned index)
     {
@@ -55,7 +55,7 @@ public:
             cout << "getPin received index > W " << index << " " << W << endl;
             exit(1);
         }
-        return _pins[index];
+        return &_pins[index];
     }
 };
 
@@ -287,6 +287,7 @@ public:
 
 typedef tuple<string,unsigned,string,Parlist> t_opi;
 typedef tuple<string,unsigned,unsigned,string,unsigned> t_pin;
+typedef tuple<string,unsigned,unsigned,unsigned> t_ev;
 typedef map<unsigned,Pin*> t_pinmap;
 #define CREATE(GATETYP,CLS) { #GATETYP, [](unsigned opid, Parlist& parlist) { return new GateMethods<CLS>(opid,parlist); } }
 #define CREATE1(GATETYP) CREATE(GATETYP,GATETYP)
@@ -317,6 +318,19 @@ class GateFactory
             exit(1);
         }
         return it->second;
+    }
+    void process_ev(t_ev& evt, t_pinmap& pinmap)
+    {
+        auto eid = get<1>(evt);
+        auto pinid = get<2>(evt);
+        auto tv = get<3>(evt);
+        auto it = pinmap.find(pinid);
+        if ( it == pinmap.end() )
+        {
+            cout << "Invalid pin id in event id" << pinid << " " << eid << endl;
+            exit(1);
+        }
+        it->second->setEid(tv,eid);
     }
     template<bool isipin> void process_pin(t_pin& pint, t_pinmap& pinmap)
     {
@@ -360,18 +374,21 @@ public:
         t_predspec ps_opi = {"opi",3};
         t_predspec ps_ipin = {"ipin",4};
         t_predspec ps_opin = {"opin",4};
-        netlistdb.load(netlistir,{ps_opi,ps_ipin,ps_opin});
+        t_predspec ps_ev = {"ev",3};
+        netlistdb.load(netlistir,{ps_opi,ps_ipin,ps_opin,ps_ev});
 
         auto opil = netlistdb.terms2tuples<t_opi>(ps_opi);
         for(auto opit : opil) process_opi(opit);
 
-        t_pinmap ipinmap;
+        t_pinmap pinmap;
         auto ipinl = netlistdb.terms2tuples<t_pin>(ps_ipin);
-        for(auto ipint:ipinl) process_pin<true>(ipint,ipinmap);
+        for(auto ipint:ipinl) process_pin<true>(ipint,pinmap);
 
-        t_pinmap opinmap;
         auto opinl = netlistdb.terms2tuples<t_pin>(ps_opin);
-        for(auto opint:opinl) process_pin<false>(opint,opinmap);
+        for(auto opint:opinl) process_pin<false>(opint,pinmap);
+
+        auto evl = netlistdb.terms2tuples<t_ev>(ps_ev);
+        for(auto evt : evl) process_ev(evt,pinmap);
     }
     ~GateFactory()
     {
