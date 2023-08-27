@@ -35,7 +35,15 @@ template<unsigned W> class Port : public PortBase
 {
     Pin *_pins[W];
 public:
-    Pin* getPin(unsigned index) { return _pins[index]; }
+    Pin* getPin(unsigned index)
+    {
+        if ( index >= W )
+        {
+            cout << "getPin received index > W " << index << " " << W << endl;
+            exit(1);
+        }
+        return _pins[index];
+    }
 };
 
 template<unsigned W> class IPort : public Port<W>
@@ -240,15 +248,23 @@ template<typename T> class GateMethods : public T
         mergeDefaults(parmap);
         validateParmap(parmap);
     }
+    template<bool isipin> Pin* getPin(string portname, unsigned pinindex)
+    {
+        Portmap pm;
+        if constexpr (isipin) pm = T::_iportmap;
+        else pm = T::_oportmap;
+        auto it = pm.find(portname);
+        if ( it == pm.end() )
+        {
+            cout << "getPin received invalid portname " << portname << " " << Gate::_opid << endl;
+            exit(1);
+        }
+        return it->second->getPin(pinindex);
+    }
 public:
-    Pin* getIPin(string portname, unsigned pinindex)
-    {
-        return T::_iportmap[portname]->getPin(pinindex);
-    }
-    Pin* getOPin(string portname, unsigned pinindex)
-    {
-        return T::_oportmap[portname]->getPin(pinindex);
-    }
+    // TODO: ideally should have getPin<bool>, but no virtual function templates allowed. Any other way?
+    Pin* getIPin(string portname, unsigned pinindex) { return getPin<true>(portname,pinindex); }
+    Pin* getOPin(string portname, unsigned pinindex) { return getPin<false>(portname,pinindex); }
     GateMethods<T>(unsigned opid, Parlist& parlist)
     {
         Gate::_opid = opid;
@@ -279,13 +295,23 @@ class GateFactory
         CREATE( LUT6, LUT<6> ),
     };
     map< unsigned, Gate* > _gatemap;
+    Gate* getGate(unsigned index)
+    {
+        auto it = _gatemap.find(index);
+        if ( it == _gatemap.end() )
+        {
+            cout << "No gate found with opid " << index << endl;
+            exit(1);
+        }
+        return it->second;
+    }
     template<bool isipin> void process_pin(t_pin& pint, t_pinmap& pinmap)
     {
         auto pinid = get<1>(pint);
         auto opid = get<2>(pint);
         auto portname = get<3>(pint);
         auto pinindex = get<4>(pint);
-        auto gate = _gatemap[opid];
+        auto gate = getGate(opid);
         Pin *pin;
         if constexpr ( isipin )
             pin = gate->getIPin(portname,pinindex);
