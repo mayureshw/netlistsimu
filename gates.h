@@ -13,21 +13,66 @@ using namespace std;
 typedef map<string,string> Parmap;
 typedef list<tuple<string,string>> Parlist;
 
+class Pin
+{
+};
+
+class IPin : public Pin
+{
+};
+
+class OPin : public Pin
+{
+};
+
+class PortBase
+{
+};
+
+template<unsigned W> class Port : public PortBase
+{
+    Pin *_pins[W];
+};
+
+template<unsigned W> class IPort : public Port<W>
+{
+};
+
+template<unsigned W> class OPort : public Port<W>
+{
+};
+
 class Gate
 {
 protected:
     unsigned _opid;
 };
 
+typedef map<string,PortBase*> Portmap;
 #define DEFPARM static inline const Parmap _defaults =
 #define NODEFPARM static inline const set<string> _nodefaults =
+#define PORT(PORTNAME) {#PORTNAME,&PORTNAME}
 class CARRY4 : public Gate
 {
 protected:
     DEFPARM   { {"ADDER_THRESHOLD",""} };
     NODEFPARM {};
-    //{ {"CYINIT",1}, {"CI",1}, {"S",4}, {"DI",4} },
-    //{ {"CO",4}, {"O",4} },
+    IPort<1> CYINIT;
+    IPort<1> CI;
+    IPort<4> S;
+    IPort<4> DI;
+    Portmap _iportmap = {
+        PORT(CYINIT),
+        PORT(CI),
+        PORT(S),
+        PORT(DI),
+        };
+    OPort<4> CO;
+    OPort<4> O;
+    Portmap _oportmap = {
+        PORT(CO),
+        PORT(O),
+        };
 };
 
 class FDCE : public Gate
@@ -35,8 +80,20 @@ class FDCE : public Gate
 protected:
     DEFPARM   { {"IS_C_INVERTED","1'b0"} };
     NODEFPARM {"INIT"};
-    //{ {"C",1},{"CE",1},{"CLR",1},{"D",1} },
-    //{ {"Q",1} },
+    IPort<1> C;
+    IPort<1> CE;
+    IPort<1> CLR;
+    IPort<1> D;
+    Portmap _iportmap = {
+        PORT(C),
+        PORT(CE),
+        PORT(CLR),
+        PORT(D),
+        };
+    OPort<1> Q;
+    Portmap _oportmap = {
+        PORT(Q),
+        };
 };
 
 class GND : public Gate
@@ -44,8 +101,11 @@ class GND : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {};
-    //{},
-    //{ {"G",1} },
+    Portmap _iportmap = {};
+    OPort<1> G;
+    Portmap _oportmap = {
+        PORT(G),
+        };
 };
 
 class IBUF : public Gate
@@ -53,17 +113,37 @@ class IBUF : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {"CCIO_EN"};
-    //{ {"I",1} },
-    //{ {"O",1} },
+    IPort<1> I;
+    Portmap _iportmap = {
+        PORT(I),
+        };
+    OPort<1> O;
+    Portmap _oportmap = {
+        PORT(O),
+        };
 };
 
-template<int suf> class LUT : public Gate
+#define FORWIDTH(N) template < typename enable_if< W >= N , IPort<1> > >::type
+template<unsigned W> class LUT : public Gate
 {
 protected:
     DEFPARM   { { "SOFT_HLUTNM",""}, { "box_type",""} };
     NODEFPARM { "INIT" };
+    IPort<1> I0;
+    FORWIDTH(2) I1;
+    //FORWIDTH(3) I2;
+    //FORWIDTH(4) I3;
+    //FORWIDTH(5) I4;
+    //FORWIDTH(6) I5;
     //{ {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1}, {"I4",1}, {"I5",1} },
-    //{ {"O",1} },
+    OPort<1> O;
+    Portmap _oportmap = {
+        PORT(O),
+        };
+public:
+    LUT<W>()
+    {
+    }
 };
 
 class OBUF : public Gate
@@ -71,8 +151,14 @@ class OBUF : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {};
-    //{ {"I",1} },
-    //{ {"O",1} },
+    IPort<1> I;
+    Portmap _iportmap = {
+        PORT(I),
+        };
+    OPort<1> O;
+    Portmap _oportmap = {
+        PORT(O),
+        };
 };
 
 class OBUFT : public Gate
@@ -80,8 +166,16 @@ class OBUFT : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {};
-    //{ {"I",1}, {"T",1} },
-    //{ {"O",1} },
+    IPort<1> I;
+    IPort<1> T;
+    Portmap _iportmap = {
+        PORT(I),
+        PORT(T),
+        };
+    OPort<1> O;
+    Portmap _oportmap = {
+        PORT(O),
+        };
 };
 
 class VCC : public Gate
@@ -89,8 +183,11 @@ class VCC : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {};
-    //{},
-    //{ {"P",1} },
+    Portmap _iportmap = {};
+    OPort<1> P;
+    Portmap _oportmap = {
+        PORT(P),
+        };
 };
 
 template<typename T> class GateMethods : public T
@@ -112,6 +209,15 @@ template<typename T> class GateMethods : public T
     {
         auto expparams = T::_defaults.size() + T::_nodefaults.size();
         auto actualparams = parmap.size();
+        for(auto ndp:T::_nodefaults)
+        {
+            auto it = parmap.find(ndp);
+            if ( it == parmap.end() )
+            {
+                cout << "Mandatory generic parameter not found: " << ndp << " opid:" << Gate::_opid << endl;
+                exit(1);
+            }
+        }
         if ( expparams != actualparams )
         {
             cout << "Generic parameter count mismatch for opid:" << Gate::_opid
