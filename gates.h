@@ -250,11 +250,11 @@ template<typename T> class GateMethods : public T
     }
     template<bool isipin> Pin* getPin(string portname, unsigned pinindex)
     {
-        Portmap pm;
-        if constexpr (isipin) pm = T::_iportmap;
-        else pm = T::_oportmap;
-        auto it = pm.find(portname);
-        if ( it == pm.end() )
+        Portmap *pm;
+        if constexpr (isipin) pm = &(T::_iportmap);
+        else pm = &(T::_oportmap);
+        auto it = pm->find(portname);
+        if ( it == pm->end() )
         {
             cout << "getPin received invalid portname " << portname << " " << Gate::_opid << endl;
             exit(1);
