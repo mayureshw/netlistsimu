@@ -43,12 +43,22 @@ public:
     virtual ~Pin() {}
 };
 
-class IPin : public Pin
+template<unsigned W> class PinState : public Pin
 {
+protected:
+    typename bitset<W>::reference _state;
+public:
+    PinState<W>( typename bitset<W>::reference state ) : _state(state) {}
 };
 
-class OPin : public Pin
+template<unsigned W> class IPin : public PinState<W>
 {
+using PinState<W>::PinState;
+};
+
+template<unsigned W> class OPin : public PinState<W>
+{
+using PinState<W>::PinState;
 };
 
 class PortBase
@@ -61,6 +71,7 @@ template<unsigned W> class Port : public PortBase
 {
 protected:
     Pin *_pins[W];
+    bitset<W> _state;
 public:
     Pin* getPin(unsigned index)
     {
@@ -82,7 +93,7 @@ template<unsigned W> class IPort : public Port<W>
 public:
     IPort<W>()
     {
-        for(int i=0; i<W; i++) Port<W>::_pins[i] = new IPin();
+        for(int i=0; i<W; i++) Port<W>::_pins[i] = new IPin<W>( Port<W>::_state[i] );
     }
 };
 
@@ -91,7 +102,7 @@ template<unsigned W> class OPort : public Port<W>
 public:
     OPort<W>()
     {
-        for(int i=0; i<W; i++) Port<W>::_pins[i] = new OPin();
+        for(int i=0; i<W; i++) Port<W>::_pins[i] = new OPin<W>( Port<W>::_state[i] );
     }
 };
 
