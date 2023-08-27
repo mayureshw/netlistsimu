@@ -15,18 +15,29 @@ typedef list<tuple<string,string>> Parlist;
 
 class Pin
 {
+public:
     inline static const unsigned EVENTTYPS = 2;
+private:
+    void validateIndex(unsigned index)
+    {
+        if ( index >= EVENTTYPS )
+        {
+            cout << "Event type exceeds allowed number " << index << " " << EVENTTYPS << endl;
+            exit(1);
+        }
+    }
 protected:
     unsigned _eids[EVENTTYPS];
 public:
     void setEid(unsigned index, unsigned eid)
     {
-        if ( index >= EVENTTYPS )
-        {
-            cout << "Event type exceeds allowed number " << eid << " " << index << " " << EVENTTYPS << endl;
-            exit(1);
-        }
+        validateIndex(index);
         _eids[index] = eid;
+    }
+    unsigned getEid(unsigned index)
+    {
+        validateIndex(index);
+        return _eids[index];
     }
 };
 
@@ -285,9 +296,18 @@ public:
     }
 };
 
+class Net
+{
+public:
+    Net(unsigned sevent, list<unsigned> tevents)
+    {
+    }
+};
+
 typedef tuple<string,unsigned,string,Parlist> t_opi;
 typedef tuple<string,unsigned,unsigned,string,unsigned> t_pin;
 typedef tuple<string,unsigned,unsigned,unsigned> t_ev;
+typedef tuple<string,unsigned,list<unsigned>> t_net;
 typedef map<unsigned,Pin*> t_pinmap;
 #define CREATE(GATETYP,CLS) { #GATETYP, [](unsigned opid, Parlist& parlist) { return new GateMethods<CLS>(opid,parlist); } }
 #define CREATE1(GATETYP) CREATE(GATETYP,GATETYP)
@@ -309,6 +329,7 @@ class GateFactory
         CREATE( LUT6, LUT<6> ),
     };
     map< unsigned, Gate* > _gatemap;
+    list<Net*> _netlist;
     Gate* getGate(unsigned index)
     {
         auto it = _gatemap.find(index);
@@ -319,18 +340,41 @@ class GateFactory
         }
         return it->second;
     }
+    Pin* getPinFromMap(unsigned pinid, t_pinmap& pinmap)
+    {
+        auto it = pinmap.find(pinid);
+        if ( it == pinmap.end() )
+        {
+            cout << "Invalid pin id sought " << pinid << endl;
+            exit(1);
+        }
+        return it->second;
+    }
+    void process_net(t_net& nett, t_pinmap& pinmap)
+    {
+        auto spinid = get<1>(nett);
+        auto tpinids = get<2>(nett);
+        auto spin = getPinFromMap(spinid,pinmap);
+        list<Pin*> tpins;
+        for(auto tpinid:tpinids)
+            tpins.push_back( getPinFromMap(tpinid,pinmap) );
+        for(int i=0; i<Pin::EVENTTYPS; i++)
+        {
+            auto seid = spin->getEid(i);
+            list<unsigned> teids;
+            for(auto tpin:tpins)
+                teids.push_back( tpin->getEid(i) );
+            auto net = new Net(seid,teids);
+            _netlist.push_back( net );
+        }
+    }
     void process_ev(t_ev& evt, t_pinmap& pinmap)
     {
         auto eid = get<1>(evt);
         auto pinid = get<2>(evt);
         auto tv = get<3>(evt);
-        auto it = pinmap.find(pinid);
-        if ( it == pinmap.end() )
-        {
-            cout << "Invalid pin id in event id" << pinid << " " << eid << endl;
-            exit(1);
-        }
-        it->second->setEid(tv,eid);
+        auto pin = getPinFromMap(pinid, pinmap);
+        pin->setEid(tv,eid);
     }
     template<bool isipin> void process_pin(t_pin& pint, t_pinmap& pinmap)
     {
@@ -375,7 +419,8 @@ public:
         t_predspec ps_ipin = {"ipin",4};
         t_predspec ps_opin = {"opin",4};
         t_predspec ps_ev = {"ev",3};
-        netlistdb.load(netlistir,{ps_opi,ps_ipin,ps_opin,ps_ev});
+        t_predspec ps_net = {"net",2};
+        netlistdb.load(netlistir,{ps_opi,ps_ipin,ps_opin,ps_ev,ps_net});
 
         auto opil = netlistdb.terms2tuples<t_opi>(ps_opi);
         for(auto opit : opil) process_opi(opit);
@@ -389,10 +434,14 @@ public:
 
         auto evl = netlistdb.terms2tuples<t_ev>(ps_ev);
         for(auto evt : evl) process_ev(evt,pinmap);
+
+        auto netl = netlistdb.terms2tuples<t_net>(ps_net);
+        for(auto nett : netl) process_net(nett,pinmap);
     }
     ~GateFactory()
     {
         for(auto ig:_gatemap) delete ig.second;
+        for(auto net:_netlist) delete net;
     }
 };
 
