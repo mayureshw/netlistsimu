@@ -27,11 +27,15 @@ class OPin : public Pin
 
 class PortBase
 {
+public:
+    virtual Pin* getPin(unsigned index)=0;
 };
 
 template<unsigned W> class Port : public PortBase
 {
     Pin *_pins[W];
+public:
+    Pin* getPin(unsigned index) { return _pins[index]; }
 };
 
 template<unsigned W> class IPort : public Port<W>
@@ -46,6 +50,9 @@ class Gate
 {
 protected:
     unsigned _opid;
+public:
+    virtual Pin* getIPin(string portname, unsigned pinindex)=0;
+    virtual Pin* getOPin(string portname, unsigned pinindex)=0;
 };
 
 typedef map<string,PortBase*> Portmap;
@@ -234,6 +241,14 @@ template<typename T> class GateMethods : public T
         validateParmap(parmap);
     }
 public:
+    Pin* getIPin(string portname, unsigned pinindex)
+    {
+        return T::_iportmap[portname]->getPin(pinindex);
+    }
+    Pin* getOPin(string portname, unsigned pinindex)
+    {
+        return T::_oportmap[portname]->getPin(pinindex);
+    }
     GateMethods<T>(unsigned opid, Parlist& parlist)
     {
         Gate::_opid = opid;
@@ -242,6 +257,8 @@ public:
 };
 
 typedef tuple<string,unsigned,string,Parlist> t_opi;
+typedef tuple<string,unsigned,unsigned,string,unsigned> t_pin;
+typedef map<unsigned,Pin*> t_pinmap;
 #define CREATE(GATETYP,CLS) { #GATETYP, [](unsigned opid, Parlist& parlist) { return new GateMethods<CLS>(opid,parlist); } }
 #define CREATE1(GATETYP) CREATE(GATETYP,GATETYP)
 class GateFactory
@@ -262,6 +279,20 @@ class GateFactory
         CREATE( LUT6, LUT<6> ),
     };
     map< unsigned, Gate* > _gatemap;
+    template<bool isipin> void process_pin(t_pin& pint, t_pinmap& pinmap)
+    {
+        auto pinid = get<1>(pint);
+        auto opid = get<2>(pint);
+        auto portname = get<3>(pint);
+        auto pinindex = get<4>(pint);
+        auto gate = _gatemap[opid];
+        Pin *pin;
+        if constexpr ( isipin )
+            pin = gate->getIPin(portname,pinindex);
+        else
+            pin = gate->getOPin(portname,pinindex);
+        pinmap.emplace(pinid,pin);
+    }
     void process_opi(t_opi& opit)
     {
         auto opid = get<1>(opit);
@@ -286,11 +317,22 @@ class GateFactory
 public:
     GateFactory(string netlistir)
     {
-        t_predspec ps_opi = {"opi",3};
         PDb netlistdb;
-        netlistdb.load(netlistir,{ps_opi});
+        t_predspec ps_opi = {"opi",3};
+        t_predspec ps_ipin = {"ipin",4};
+        t_predspec ps_opin = {"opin",4};
+        netlistdb.load(netlistir,{ps_opi,ps_ipin,ps_opin});
+
         auto opil = netlistdb.terms2tuples<t_opi>(ps_opi);
         for(auto opit : opil) process_opi(opit);
+
+        t_pinmap ipinmap;
+        auto ipinl = netlistdb.terms2tuples<t_pin>(ps_ipin);
+        for(auto ipint:ipinl) process_pin<true>(ipint,ipinmap);
+
+        t_pinmap opinmap;
+        auto opinl = netlistdb.terms2tuples<t_pin>(ps_opin);
+        for(auto opint:opinl) process_pin<false>(opint,opinmap);
     }
     ~GateFactory()
     {
