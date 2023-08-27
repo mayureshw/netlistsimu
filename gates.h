@@ -123,19 +123,13 @@ protected:
         };
 };
 
-#define FORWIDTH(N) template < typename enable_if< W >= N , IPort<1> > >::type
 template<unsigned W> class LUT : public Gate
 {
 protected:
     DEFPARM   { { "SOFT_HLUTNM",""}, { "box_type",""} };
     NODEFPARM { "INIT" };
-    IPort<1> I0;
-    FORWIDTH(2) I1;
-    //FORWIDTH(3) I2;
-    //FORWIDTH(4) I3;
-    //FORWIDTH(5) I4;
-    //FORWIDTH(6) I5;
-    //{ {"I0",1}, {"I1",1}, {"I2",1}, {"I3",1}, {"I4",1}, {"I5",1} },
+    IPort<1> I[W];
+    Portmap _iportmap;
     OPort<1> O;
     Portmap _oportmap = {
         PORT(O),
@@ -143,6 +137,11 @@ protected:
 public:
     LUT<W>()
     {
+        for(int i=0; i<W; i++)
+        {
+            string portname = "I" + to_string(i);
+            _iportmap.emplace(portname,&I[i]);
+        }
     }
 };
 
