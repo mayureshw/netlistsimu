@@ -45,7 +45,6 @@ private:
 protected:
     unsigned _eids[EVENTTYPS];
 public:
-    virtual void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)=0;
     void setEid(unsigned index, unsigned eid)
     {
         validateIndex(index);
@@ -79,10 +78,6 @@ public:
 template<unsigned W> class OPin : public PinState<W>
 {
 using PinState<W>::PinState;
-public:
-    void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
-    {
-    }
 };
 
 class PortBase
@@ -161,6 +156,7 @@ public:
     }
 };
 
+// TODO: We'll need PassiveIPin class for pins that shouldn't  trigger eval call
 class FDCE : public Gate
 {
 protected:
