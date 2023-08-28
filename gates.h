@@ -45,6 +45,7 @@ private:
 protected:
     unsigned _eids[EVENTTYPS];
 public:
+    virtual void setEventHandlers(Gate *, NLSimulatorBase *) {}
     void setEid(unsigned index, unsigned eid)
     {
         validateIndex(index);
@@ -69,9 +70,25 @@ public:
 template<unsigned W> class IPin : public PinState<W>
 {
 using PinState<W>::PinState;
+    EventHandler *_eventHandlers[Pin::EVENTTYPS];
+    Gate *_gate;
+    template<int V> void handle()
+    {
+        PinState<W>::_state = V;
+        _gate->eval();
+    }
 public:
     void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
     {
+        _gate = gate;
+        _eventHandlers[0] = new EventHandler( nlsimu->router(), Pin::_eids[0],
+            [this](Event,unsigned long) { this->handle<0>(); } );
+        _eventHandlers[1] = new EventHandler( nlsimu->router(), Pin::_eids[1],
+            [this](Event,unsigned long) { this->handle<1>(); } );
+    }
+    ~IPin()
+    {
+        for(int i=0; i<Pin::EVENTTYPS; i++) delete _eventHandlers[i];
     }
 };
 
@@ -83,6 +100,7 @@ using PinState<W>::PinState;
 class PortBase
 {
 public:
+    virtual void setEventHandlers(Gate *, NLSimulatorBase *) {}
     virtual Pin* getPin(unsigned index)=0;
 };
 
@@ -100,6 +118,10 @@ public:
             exit(1);
         }
         return _pins[index];
+    }
+    void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
+    {
+        for(int i=0; i<W; i++) _pins[i]->setEventHandlers(gate,nlsimu);
     }
     ~Port()
     {
@@ -358,6 +380,7 @@ template<typename T> class GateMethods : public T
 public:
     void setEventHandlers(NLSimulatorBase *nlsimu)
     {
+        for(auto ip:T::_iportmap) ip.second->setEventHandlers(this, nlsimu);
     }
     // TODO: ideally should have getPin<bool>, but no virtual function templates allowed. Any other way?
     Pin* getIPin(string portname, unsigned pinindex) { return getPin<true>(portname,pinindex); }
