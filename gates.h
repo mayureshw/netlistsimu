@@ -15,6 +15,19 @@ using namespace std;
 typedef map<string,string> Parmap;
 typedef list<tuple<string,string>> Parlist;
 
+class Pin;
+
+class Gate
+{
+protected:
+    unsigned _opid;
+public:
+    virtual Pin* getIPin(string portname, unsigned pinindex)=0;
+    virtual Pin* getOPin(string portname, unsigned pinindex)=0;
+    virtual void setEventHandlers(NLSimulatorBase *nlsimu)=0;
+    virtual ~Gate() {}
+};
+
 class Pin
 {
 public:
@@ -31,6 +44,7 @@ private:
 protected:
     unsigned _eids[EVENTTYPS];
 public:
+    virtual void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)=0;
     void setEid(unsigned index, unsigned eid)
     {
         validateIndex(index);
@@ -55,11 +69,19 @@ public:
 template<unsigned W> class IPin : public PinState<W>
 {
 using PinState<W>::PinState;
+public:
+    void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
+    {
+    }
 };
 
 template<unsigned W> class OPin : public PinState<W>
 {
 using PinState<W>::PinState;
+public:
+    void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
+    {
+    }
 };
 
 class PortBase
@@ -105,17 +127,6 @@ public:
     {
         for(int i=0; i<W; i++) Port<W>::_pins[i] = new OPin<W>( Port<W>::_state[i] );
     }
-};
-
-class Gate
-{
-protected:
-    unsigned _opid;
-public:
-    virtual Pin* getIPin(string portname, unsigned pinindex)=0;
-    virtual Pin* getOPin(string portname, unsigned pinindex)=0;
-    virtual void setEventHandlers(NLSimulatorBase *nlsimu)=0;
-    virtual ~Gate() {}
 };
 
 typedef map<string,PortBase*> Portmap;
