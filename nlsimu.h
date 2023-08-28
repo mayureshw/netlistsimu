@@ -1,6 +1,10 @@
 #ifndef _NLSIMU_H
 #define _NLSIMU_H
 
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <random>
 #include "gates.h"
 
 // TODO: Complete simulator without CEP first.
@@ -23,8 +27,57 @@ class NLSimulator : public NLSimulatorBase
 {
     GateFactory _factory;
     EventRouter _simuRouter;
+    using t_pair  = pair<double, unsigned>;
+    // Saves the overhead of comparing 2nd member of the pair
+    class PriorityLT
+    {
+    public:
+        // Since delay is opposite of priority, we use >
+        bool operator() (t_pair& l, t_pair& r) { return l.first > r.first; }
+    };
+    using t_queue = priority_queue<t_pair, vector<t_pair>, PriorityLT>;
+    t_queue _rq;
+    mutex _rqmutex;
+    condition_variable _rq_cvar;
+    random_device _rng;
+    uniform_real_distribution<double> _udistr {-1,1};
+    bool _quit = false;
+    void _simuloop()
+    {
+        while ( not _quit )
+        {
+            _rqmutex.lock();
+            if ( _rq.empty() )
+            {
+                _rqmutex.unlock();
+                break;
+            }
+            auto eid = _rq.top().second;
+            _rq.pop();
+            _rqmutex.unlock();
+            _simuRouter.route(eid,0);
+        }
+    }
+    void simuloop()
+    {
+        while ( not _quit )
+        {
+            _simuloop();
+            unique_lock<mutex> ulockq(_rqmutex);
+            _rq_cvar.wait(ulockq, [](){return true;});
+        }
+    }
+    thread _simuthread {&NLSimulator::simuloop,this};
 public:
-    void sendEvent(unsigned long eid) { _simuRouter.route(eid,0); }
+    void quit() { _quit = true; }
+    void sendEvent(unsigned long eid)
+    {
+        auto prio = _udistr(_rng);
+        _rqmutex.lock();
+        _rq.push( { prio, eid } );
+        _rqmutex.unlock();
+    }
+    void wait() { _simuthread.join(); }
     EventRouter& router() { return _simuRouter; }
     NLSimulator(string netlistir) : _factory(netlistir,this)
     {
