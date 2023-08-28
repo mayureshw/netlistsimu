@@ -71,20 +71,18 @@ template<unsigned W> class IPin : public PinState<W>
 {
 using PinState<W>::PinState;
     EventHandler *_eventHandlers[Pin::EVENTTYPS];
-    Gate *_gate;
-    template<int V> void handle()
+    template<int V> void handle(Gate *gate)
     {
         PinState<W>::_state = V;
-        _gate->eval();
+        gate->eval();
     }
 public:
     void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
     {
-        _gate = gate;
         _eventHandlers[0] = new EventHandler( nlsimu->router(), Pin::_eids[0],
-            [this](Event,unsigned long) { this->handle<0>(); } );
+            [this,gate](Event,unsigned long) { this->handle<0>(gate); } );
         _eventHandlers[1] = new EventHandler( nlsimu->router(), Pin::_eids[1],
-            [this](Event,unsigned long) { this->handle<1>(); } );
+            [this,gate](Event,unsigned long) { this->handle<1>(gate); } );
     }
     ~IPin()
     {
@@ -95,6 +93,15 @@ public:
 template<unsigned W> class OPin : public PinState<W>
 {
 using PinState<W>::PinState;
+public:
+    void set(bool val, NLSimulatorBase *nlsimu)
+    {
+        if ( PinState<W>::_state != val )
+        {
+            PinState<W>::_state != val;
+            nlsimu->sendEvent( Pin::_eids[val] );
+        }
+    }
 };
 
 class PortBase
