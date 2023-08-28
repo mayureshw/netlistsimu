@@ -46,6 +46,7 @@ private:
 protected:
     unsigned _eids[EVENTTYPS];
 public:
+    void set(bool val, NLSimulatorBase *nlsimu) {}
     virtual void setEventHandlers(Gate *, NLSimulatorBase *) {}
     void setEid(unsigned index, unsigned eid)
     {
@@ -99,7 +100,7 @@ public:
     {
         if ( PinState<W>::_state != val )
         {
-            PinState<W>::_state != val;
+            PinState<W>::_state = val;
             nlsimu->sendEvent( Pin::_eids[val] );
         }
     }
@@ -118,6 +119,10 @@ protected:
     Pin *_pins[W];
     bitset<W> _state;
 public:
+    void set(bitset<W>& val, NLSimulatorBase *nlsimu)
+    {
+        for(int i=0; i<W; i++) _pins[i]->set(_state[i], nlsimu);
+    }
     Pin* getPin(unsigned index)
     {
         if ( index >= W )
