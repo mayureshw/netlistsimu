@@ -25,6 +25,7 @@ public:
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers(NLSimulatorBase *nlsimu)=0;
+    virtual void eval()=0;
     virtual ~Gate() {}
 };
 
@@ -154,6 +155,10 @@ protected:
         PORT(CO),
         PORT(O),
         };
+public:
+    void eval()
+    {
+    }
 };
 
 class FDCE : public Gate
@@ -175,6 +180,10 @@ protected:
     Portmap _oportmap = {
         PORT(Q),
         };
+public:
+    void eval()
+    {
+    }
 };
 
 class GND : public Gate
@@ -187,6 +196,10 @@ protected:
     Portmap _oportmap = {
         PORT(G),
         };
+public:
+    void eval()
+    {
+    }
 };
 
 class IBUF : public Gate
@@ -202,6 +215,10 @@ protected:
     Portmap _oportmap = {
         PORT(O),
         };
+public:
+    void eval()
+    {
+    }
 };
 
 template<unsigned W> class LUT : public Gate
@@ -216,6 +233,9 @@ protected:
         PORT(O),
         };
 public:
+    void eval()
+    {
+    }
     LUT<W>()
     {
         for(int i=0; i<W; i++)
@@ -239,6 +259,10 @@ protected:
     Portmap _oportmap = {
         PORT(O),
         };
+public:
+    void eval()
+    {
+    }
 };
 
 class OBUFT : public Gate
@@ -256,6 +280,10 @@ protected:
     Portmap _oportmap = {
         PORT(O),
         };
+public:
+    void eval()
+    {
+    }
 };
 
 class VCC : public Gate
@@ -268,6 +296,10 @@ protected:
     Portmap _oportmap = {
         PORT(P),
         };
+public:
+    void eval()
+    {
+    }
 };
 
 template<typename T> class GateMethods : public T
