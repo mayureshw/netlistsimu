@@ -21,10 +21,11 @@ class Gate
 {
 protected:
     unsigned _opid;
+    NLSimulatorBase *_nlsimu;
 public:
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
-    virtual void setEventHandlers(NLSimulatorBase *nlsimu)=0;
+    virtual void setEventHandlers()=0;
     virtual void eval()=0;
     virtual ~Gate() {}
 };
@@ -385,16 +386,17 @@ template<typename T> class GateMethods : public T
         return it->second->getPin(pinindex);
     }
 public:
-    void setEventHandlers(NLSimulatorBase *nlsimu)
+    void setEventHandlers()
     {
-        for(auto ip:T::_iportmap) ip.second->setEventHandlers(this, nlsimu);
+        for(auto ip:T::_iportmap) ip.second->setEventHandlers(this,Gate::_nlsimu);
     }
     // TODO: ideally should have getPin<bool>, but no virtual function templates allowed. Any other way?
     Pin* getIPin(string portname, unsigned pinindex) { return getPin<true>(portname,pinindex); }
     Pin* getOPin(string portname, unsigned pinindex) { return getPin<false>(portname,pinindex); }
-    GateMethods<T>(unsigned opid, Parlist& parlist)
+    GateMethods<T>(unsigned opid, Parlist& parlist, NLSimulatorBase *nlsimu)
     {
         Gate::_opid = opid;
+        Gate::_nlsimu = nlsimu;
         processParmap(parlist);
     }
 };
@@ -412,7 +414,7 @@ typedef tuple<string,unsigned,unsigned,string,unsigned> t_pin;
 typedef tuple<string,unsigned,unsigned,unsigned> t_ev;
 typedef tuple<string,unsigned,list<unsigned>> t_net;
 typedef map<unsigned,Pin*> t_pinmap;
-#define CREATE(GATETYP,CLS) { #GATETYP, [this](unsigned opid, Parlist& parlist) { return new GateMethods<CLS>(opid,parlist); } }
+#define CREATE(GATETYP,CLS) { #GATETYP, [this](unsigned opid, Parlist& parlist) { return new GateMethods<CLS>(opid,parlist,_nlsimu); } }
 #define CREATE1(GATETYP) CREATE(GATETYP,GATETYP)
 class GateFactory
 {
@@ -433,6 +435,7 @@ class GateFactory
     };
     map< unsigned, Gate* > _gatemap;
     list<Net*> _netlist;
+    NLSimulatorBase *_nlsimu;
     Gate* getGate(unsigned index)
     {
         auto it = _gatemap.find(index);
@@ -515,7 +518,7 @@ class GateFactory
         _gatemap.emplace(opid,gate);
     }
 public:
-    GateFactory(string netlistir, NLSimulatorBase* nlsimu)
+    GateFactory(string netlistir, NLSimulatorBase* nlsimu) : _nlsimu(nlsimu)
     {
         PDb netlistdb;
         t_predspec ps_opi = {"opi",3};
@@ -542,7 +545,7 @@ public:
         for(auto nett : netl) process_net(nett,pinmap);
 
         // set event handlers after all pins know their events
-        for(auto ig:_gatemap) ig.second->setEventHandlers(nlsimu);
+        for(auto ig:_gatemap) ig.second->setEventHandlers();
     }
     ~GateFactory()
     {
