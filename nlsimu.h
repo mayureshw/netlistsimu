@@ -58,13 +58,13 @@ class NLSimulator : public NLSimulatorBase
             _simuRouter.route(eid,0);
         }
     }
-    void simuloop()
+    void simuloop() // TODO: This needs some work, here and in petrinet.h
     {
         do {
             _simuloop();
             {
                 unique_lock<mutex> ulockq(_rqmutex);
-                _rq_cvar.wait(ulockq, [this](){return not _rq.empty();});
+                _rq_cvar.wait(ulockq, [this](){return true;});
             }
         }
         while ( not _quit );
