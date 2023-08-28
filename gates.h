@@ -10,6 +10,7 @@
 
 using namespace std;
 #include "xsb2cpp.h"
+#include "nlsimubase.h"
 
 typedef map<string,string> Parmap;
 typedef list<tuple<string,string>> Parlist;
@@ -110,6 +111,7 @@ class Gate
 {
 protected:
     unsigned _opid;
+    NLSimulatorBase *_nlsimu;
 public:
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
@@ -318,9 +320,10 @@ public:
     // TODO: ideally should have getPin<bool>, but no virtual function templates allowed. Any other way?
     Pin* getIPin(string portname, unsigned pinindex) { return getPin<true>(portname,pinindex); }
     Pin* getOPin(string portname, unsigned pinindex) { return getPin<false>(portname,pinindex); }
-    GateMethods<T>(unsigned opid, Parlist& parlist)
+    GateMethods<T>(unsigned opid, Parlist& parlist, NLSimulatorBase *nlsimu)
     {
         Gate::_opid = opid;
+        Gate::_nlsimu = nlsimu;
         processParmap(parlist);
     }
 };
@@ -338,10 +341,11 @@ typedef tuple<string,unsigned,unsigned,string,unsigned> t_pin;
 typedef tuple<string,unsigned,unsigned,unsigned> t_ev;
 typedef tuple<string,unsigned,list<unsigned>> t_net;
 typedef map<unsigned,Pin*> t_pinmap;
-#define CREATE(GATETYP,CLS) { #GATETYP, [](unsigned opid, Parlist& parlist) { return new GateMethods<CLS>(opid,parlist); } }
+#define CREATE(GATETYP,CLS) { #GATETYP, [this](unsigned opid, Parlist& parlist) { return new GateMethods<CLS>(opid,parlist,_nlsimu); } }
 #define CREATE1(GATETYP) CREATE(GATETYP,GATETYP)
 class GateFactory
 {
+    NLSimulatorBase *_nlsimu;
     const map< string, function< Gate* (unsigned,Parlist&) > > _creators = {
         CREATE1( CARRY4 ),
         CREATE1( FDCE   ),
@@ -441,7 +445,7 @@ class GateFactory
         _gatemap.emplace(opid,gate);
     }
 public:
-    GateFactory(string netlistir)
+    GateFactory(string netlistir, NLSimulatorBase* nlsimu) : _nlsimu(nlsimu)
     {
         PDb netlistdb;
         t_predspec ps_opi = {"opi",3};
@@ -473,10 +477,5 @@ public:
         for(auto net:_netlist) delete net;
     }
 };
-
-// TODOs
-// - Define pin class, work out pin bindings in a gate, avoid interpreting names at run time (ok during construction)
-// - Pin class will senf an event when its value changes (only when new value is different from the previous)
-//   for which the event ids for 0 and 1 will be a property known to the pin at construction time
 
 #endif
