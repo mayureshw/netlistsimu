@@ -60,12 +60,14 @@ class NLSimulator : public NLSimulatorBase
     }
     void simuloop()
     {
-        while ( not _quit )
-        {
+        do {
             _simuloop();
-            unique_lock<mutex> ulockq(_rqmutex);
-            _rq_cvar.wait(ulockq, [](){return true;});
+            {
+                unique_lock<mutex> ulockq(_rqmutex);
+                _rq_cvar.wait(ulockq, [this](){return not _rq.empty();});
+            }
         }
+        while ( not _quit );
     }
     thread _simuthread {&NLSimulator::simuloop,this};
 public:
@@ -76,6 +78,7 @@ public:
         _rqmutex.lock();
         _rq.push( { prio, eid } );
         _rqmutex.unlock();
+        _rq_cvar.notify_one();
     }
     void wait() { _simuthread.join(); }
     EventRouter& router() { return _simuRouter; }
