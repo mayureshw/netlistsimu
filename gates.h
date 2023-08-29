@@ -27,6 +27,7 @@ public:
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers()=0;
     virtual void eval()=0;
+    virtual void init() {}
     virtual ~Gate() {}
 };
 
@@ -46,7 +47,7 @@ private:
 protected:
     unsigned _eids[EVENTTYPS];
 public:
-    void set(bool val, NLSimulatorBase *nlsimu) {}
+    virtual void set(bool val, NLSimulatorBase *nlsimu) {}
     virtual void setEventHandlers(Gate *, NLSimulatorBase *) {}
     void setEid(unsigned index, unsigned eid)
     {
@@ -121,7 +122,7 @@ protected:
 public:
     void set(bitset<W>& val, NLSimulatorBase *nlsimu)
     {
-        for(int i=0; i<W; i++) _pins[i]->set(_state[i], nlsimu);
+        for(int i=0; i<W; i++) _pins[i]->set(val[i], nlsimu);
     }
     Pin* getPin(unsigned index)
     {
@@ -231,7 +232,7 @@ public:
     void eval()
     {
     }
-    GND()
+    void init()
     {
         bitset<1> val = 0;
         G.set(val,_nlsimu);
@@ -336,7 +337,7 @@ public:
     void eval()
     {
     }
-    VCC()
+    void init()
     {
         bitset<1> val = 1;
         P.set(val,_nlsimu);
@@ -559,8 +560,12 @@ public:
         auto netl = netlistdb.terms2tuples<t_net>(ps_net);
         for(auto nett : netl) process_net(nett,pinmap);
 
-        // set event handlers after all pins know their events
-        for(auto ig:_gatemap) ig.second->setEventHandlers();
+        // set event handlers and init after all pins know their events
+        for(auto ig:_gatemap)
+        {
+            ig.second->setEventHandlers();
+            ig.second->init();
+        }
     }
     ~GateFactory()
     {
