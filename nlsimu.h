@@ -42,9 +42,11 @@ class NLSimulator : public NLSimulatorBase
     random_device _rng;
     uniform_real_distribution<double> _udistr {-1,1};
     bool _quit = false;
+    bool simuend() { return _quit and _rq.empty(); }
+    bool waitover() { return not _rq.empty() or _quit; }
     void _simuloop()
     {
-        while ( not _quit )
+        while ( true )
         {
             _rqmutex.lock();
             if ( _rq.empty() )
@@ -64,21 +66,25 @@ class NLSimulator : public NLSimulatorBase
             _simuloop();
             {
                 unique_lock<mutex> ulockq(_rqmutex);
-                _rq_cvar.wait(ulockq, [this](){return true;});
+                _rq_cvar.wait(ulockq, [this](){return waitover();});
             }
-        }
-        while ( not _quit );
+        } while ( not simuend() );
     }
     thread _simuthread {&NLSimulator::simuloop,this};
+    void notify() { _rq_cvar.notify_one(); }
 public:
-    void quit() { _quit = true; }
+    void quit()
+    {
+        _quit = true;
+        notify();
+    }
     void sendEvent(unsigned long eid)
     {
         auto prio = _udistr(_rng);
         _rqmutex.lock();
         _rq.push( { prio, eid } );
         _rqmutex.unlock();
-        _rq_cvar.notify_one();
+        notify();
     }
     void wait() { _simuthread.join(); }
     EventRouter& router() { return _simuRouter; }
