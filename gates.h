@@ -231,6 +231,11 @@ public:
     void eval()
     {
     }
+    GND()
+    {
+        bitset<1> val = 0;
+        G.set(val,_nlsimu);
+    }
 };
 
 class IBUF : public Gate
@@ -330,6 +335,11 @@ protected:
 public:
     void eval()
     {
+    }
+    VCC()
+    {
+        bitset<1> val = 1;
+        P.set(val,_nlsimu);
     }
 };
 
