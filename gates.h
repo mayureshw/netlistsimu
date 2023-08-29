@@ -93,32 +93,31 @@ public:
     }
 };
 
+typedef function<void(bool,NLSimulatorBase*)> t_setterfn;
 template<unsigned W> class OPin : public PinState<W>
 {
 using PinState<W>::PinState;
     // For first ever 'set' call we must send the event, later only on state change
     // Instead of checking a flag every time, we use a function pointer
-    function<void(bool,NLSimulatorBase*)> _setter;
+    // Does this really pay off or a flag would be cheaper? TODO: Experiment
     void _do_set(bool val, NLSimulatorBase *nlsimu)
     {
         PinState<W>::_state = val;
         nlsimu->sendEvent( Pin::_eids[val] );
     }
-    void _set_postinit(bool val, NLSimulatorBase *nlsimu)
-    {
-        if ( PinState<W>::_state != val ) _do_set(val,nlsimu);
-    }
-    void _set_init(bool val, NLSimulatorBase *nlsimu)
-    {
-        _do_set(val,nlsimu);
-        _setter = bind(&OPin<W>::_set_postinit,this);
-    }
+    t_setterfn
+        _set_init = [this](bool val, NLSimulatorBase *nlsimu)
+        {
+            _do_set(val,nlsimu);
+            _setter = _set_postinit;
+        },
+        _set_postinit = [this](bool val, NLSimulatorBase *nlsimu)
+        {
+            if ( PinState<W>::_state != val ) _do_set(val,nlsimu);
+        },
+        _setter = _set_init;
 public:
-    void set(bool val, NLSimulatorBase *nlsimu) { _setter(val,nlsimu); }
-    OPin<W>()
-    {
-        _setter = bind(&OPin<W>::_set_init,this);
-    }
+    void set(bool val, NLSimulatorBase *nlsimu) { this->_setter(val,nlsimu); }
 };
 
 class PortBase
