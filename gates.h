@@ -547,6 +547,12 @@ class GateFactory
         _gatemap.emplace(opid,gate);
     }
 public:
+    // Note: init must be called after construction of factory
+    // since it does sendEvent, which needs to happen from a different thread
+    void init()
+    {
+        for(auto ig:_gatemap) ig.second->init();
+    }
     GateFactory(string netlistir, NLSimulatorBase* nlsimu) : _nlsimu(nlsimu)
     {
         PDb netlistdb;
@@ -573,12 +579,8 @@ public:
         auto netl = netlistdb.terms2tuples<t_net>(ps_net);
         for(auto nett : netl) process_net(nett,pinmap);
 
-        // set event handlers and init after all pins know their events
-        for(auto ig:_gatemap)
-        {
-            ig.second->setEventHandlers();
-            ig.second->init();
-        }
+        // set event handlers after all pins know their events
+        for(auto ig:_gatemap) ig.second->setEventHandlers();
     }
     ~GateFactory()
     {

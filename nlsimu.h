@@ -73,6 +73,7 @@ class NLSimulator : public NLSimulatorBase
     thread _simuthread {&NLSimulator::simuloop,this};
     void notify() { _rq_cvar.notify_one(); }
 public:
+    void init() { _factory.init(); }
     void quit()
     {
         _quit = true;
