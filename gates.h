@@ -15,6 +15,68 @@ using namespace std;
 typedef map<string,string> Parmap;
 typedef list<tuple<string,string>> Parlist;
 
+template <unsigned W> class HDLConst
+{
+    bitset<W> _bits = 0;
+    void str2bits_h(string str)
+    {
+        int strtpos = 0;
+        for(auto rit=str.crbegin(); rit!=str.crend(); rit++, strtpos += 4)
+            switch ( *rit )
+            {
+                case '0': str2bits_b("0000",strtpos); break;
+                case '1': str2bits_b("0001",strtpos); break;
+                case '2': str2bits_b("0010",strtpos); break;
+                case '3': str2bits_b("0011",strtpos); break;
+                case '4': str2bits_b("0100",strtpos); break;
+                case '5': str2bits_b("0101",strtpos); break;
+                case '6': str2bits_b("0110",strtpos); break;
+                case '7': str2bits_b("0111",strtpos); break;
+                case '8': str2bits_b("1000",strtpos); break;
+                case '9': str2bits_b("1001",strtpos); break;
+                case 'A': str2bits_b("1010",strtpos); break;
+                case 'B': str2bits_b("1011",strtpos); break;
+                case 'C': str2bits_b("1100",strtpos); break;
+                case 'D': str2bits_b("1101",strtpos); break;
+                case 'E': str2bits_b("1110",strtpos); break;
+                case 'F': str2bits_b("1111",strtpos); break;
+                default:
+                    cout << "Invalid character in number string " << str << endl;
+                    exit(1);
+            }
+    }
+    void str2bits_b(string str, int strtpos = 0)
+    {
+        int i=strtpos;
+        for(auto rit=str.crbegin(); rit!=str.crend(); rit++, i++)
+            if ( *rit == '1' ) _bits[i] = 1;
+    }
+public:
+    bool operator [] (int i) { return _bits[i]; }
+    bitset<W>& as_bitset() { return _bits; }
+    HDLConst(string str)
+    {
+        auto qpos = str.find("'");
+        auto szstr = str.substr(0,qpos);
+        auto sz = stoi(szstr);
+        if ( sz > W )
+        {
+            cout << "Constant too large " << sz << ">" << W << endl;
+            exit(1);
+        }
+        auto numstr = str.substr(qpos+2);
+        auto typ = str.substr(qpos+1,1)[0];
+        switch(typ)
+        {
+            case 'h' : str2bits_h(numstr); break;
+            case 'b' : str2bits_b(numstr); break;
+            default:
+                cout << "Invalid number system, expect h or b " << str << endl;
+                exit(1);
+        }
+    }
+};
+
 class Pin;
 
 class Gate
@@ -22,6 +84,7 @@ class Gate
 protected:
     unsigned _opid;
     NLSimulatorBase *_nlsimu;
+    virtual void handleParmap(Parmap&) {}
 public:
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
@@ -244,9 +307,7 @@ protected:
         PORT(G),
         };
 public:
-    void eval()
-    {
-    }
+    void eval() {}
     void init()
     {
         bitset<1> val = 0;
@@ -268,14 +329,12 @@ protected:
         PORT(O),
         };
 public:
-    void eval()
-    {
-        O.set(I.state(),_nlsimu);
-    }
+    void eval() { O.set(I.state(),_nlsimu); }
 };
 
 template<unsigned W> class LUT : public Gate
 {
+    bitset<64> _o;
 protected:
     DEFPARM   { { "SOFT_HLUTNM",""}, { "box_type",""} };
     NODEFPARM { "INIT" };
@@ -285,9 +344,20 @@ protected:
     Portmap _oportmap = {
         PORT(O),
         };
+    void handleParmap(Parmap& parmap)
+    {
+        auto init = parmap["INIT"];
+        HDLConst<64> initconst {init};
+        _o = initconst.as_bitset();
+    }
 public:
     void eval()
     {
+        int ival = 0;
+        for(int i=0, mask=1; i<W; i++, mask<<=1)
+            if ( I[i].state()[0] ) ival+=mask;
+        bitset<1> o = { _o[ival] };
+        O.set(o,_nlsimu);
     }
     LUT<W>()
     {
@@ -313,10 +383,7 @@ protected:
         PORT(O),
         };
 public:
-    void eval()
-    {
-        O.set(I.state(),_nlsimu);
-    }
+    void eval() { O.set(I.state(),_nlsimu); }
 };
 
 class OBUFT : public Gate
@@ -351,9 +418,7 @@ protected:
         PORT(P),
         };
 public:
-    void eval()
-    {
-    }
+    void eval() {}
     void init()
     {
         bitset<1> val = 1;
@@ -404,6 +469,7 @@ template<typename T> class GateMethods : public T
             parmap.emplace( get<0>(pv), get<1>(pv) );
         mergeDefaults(parmap);
         validateParmap(parmap);
+        T::handleParmap(parmap);
     }
     template<bool isipin> Pin* getPin(string portname, unsigned pinindex)
     {
