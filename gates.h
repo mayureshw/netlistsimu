@@ -332,9 +332,10 @@ public:
     void eval() { O.set(I.state(),_nlsimu); }
 };
 
+#define LUTSZ 1<<W
 template<unsigned W> class LUT : public Gate
 {
-    bitset<64> _o;
+    bitset<LUTSZ> _o;
 protected:
     DEFPARM   { { "SOFT_HLUTNM",""}, { "box_type",""} };
     NODEFPARM { "INIT" };
@@ -347,7 +348,7 @@ protected:
     void handleParmap(Parmap& parmap)
     {
         auto init = parmap["INIT"];
-        HDLConst<64> initconst {init};
+        HDLConst<LUTSZ> initconst {init};
         _o = initconst.as_bitset();
     }
 public:
