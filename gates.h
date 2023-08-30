@@ -133,14 +133,14 @@ public:
     PinState<W>( typename bitset<W>::reference state ) : _state(state) {}
 };
 
-template<unsigned W> class IPin : public PinState<W>
+template<unsigned W, bool Passive=false> class IPin : public PinState<W>
 {
 using PinState<W>::PinState;
     EventHandler *_eventHandlers[Pin::EVENTTYPS];
     template<int V> void handle(Gate *gate)
     {
         PinState<W>::_state = V;
-        gate->eval();
+        if constexpr (not Passive) gate->eval();
     }
 public:
     void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
@@ -226,6 +226,7 @@ public:
 };
 
 #define IPort(W) Port<W,IPin<W>>
+#define PassiveIPort(W) Port<W,IPin<W,true>>
 #define OPort(W) Port<W,OPin<W>>
 
 typedef map<string,PortBase*> Portmap;
@@ -259,16 +260,15 @@ public:
     }
 };
 
-// TODO: We'll need PassiveIPin class for pins that shouldn't  trigger eval call
 class FDCE : public Gate
 {
 protected:
     DEFPARM   { {"IS_C_INVERTED","1'b0"} };
     NODEFPARM {"INIT"};
     IPort(1) C;
-    IPort(1) CE;
+    PassiveIPort(1) CE;
     IPort(1) CLR;
-    IPort(1) D;
+    PassiveIPort(1) D;
     Portmap _iportmap = {
         PORT(C),
         PORT(CE),
