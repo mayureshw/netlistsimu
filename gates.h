@@ -134,6 +134,7 @@ protected:
     Pin *_pins[W];
     bitset<W> _state;
 public:
+    bitset<W>& state() { return _state; }
     void set(bitset<W>& val, NLSimulatorBase *nlsimu)
     {
         for(int i=0; i<W; i++) _pins[i]->set(val[i], nlsimu);
@@ -269,6 +270,7 @@ protected:
 public:
     void eval()
     {
+        O.set(I.state(),_nlsimu);
     }
 };
 
@@ -313,6 +315,7 @@ protected:
 public:
     void eval()
     {
+        O.set(I.state(),_nlsimu);
     }
 };
 
