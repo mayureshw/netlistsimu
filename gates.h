@@ -191,10 +191,10 @@ public:
     virtual Pin* getPin(unsigned index)=0;
 };
 
-template<unsigned W> class Port : public PortBase
+template<unsigned W, typename PT> class Port : public PortBase
 {
 protected:
-    Pin *_pins[W];
+    PT *_pins[W];
     bitset<W> _state;
 public:
     bitset<W>& state() { return _state; }
@@ -219,25 +219,14 @@ public:
     {
         for(int i=0; i<W; i++) delete _pins[i];
     }
-};
-
-template<unsigned W> class IPort : public Port<W>
-{
-public:
-    IPort<W>()
+    Port<W,PT>()
     {
-        for(int i=0; i<W; i++) Port<W>::_pins[i] = new IPin<W>( Port<W>::_state[i] );
+        for(int i=0; i<W; i++) _pins[i] = new PT( _state[i] );
     }
 };
 
-template<unsigned W> class OPort : public Port<W>
-{
-public:
-    OPort<W>()
-    {
-        for(int i=0; i<W; i++) Port<W>::_pins[i] = new OPin<W>( Port<W>::_state[i] );
-    }
-};
+#define IPort(W) Port<W,IPin<W>>
+#define OPort(W) Port<W,OPin<W>>
 
 typedef map<string,PortBase*> Portmap;
 #define DEFPARM static inline const Parmap _defaults =
@@ -248,18 +237,18 @@ class CARRY4 : public Gate
 protected:
     DEFPARM   { {"ADDER_THRESHOLD",""} };
     NODEFPARM {};
-    IPort<1> CYINIT;
-    IPort<1> CI;
-    IPort<4> S;
-    IPort<4> DI;
+    IPort(1) CYINIT;
+    IPort(1) CI;
+    IPort(4) S;
+    IPort(4) DI;
     Portmap _iportmap = {
         PORT(CYINIT),
         PORT(CI),
         PORT(S),
         PORT(DI),
         };
-    OPort<4> CO;
-    OPort<4> O;
+    OPort(4) CO;
+    OPort(4) O;
     Portmap _oportmap = {
         PORT(CO),
         PORT(O),
@@ -276,17 +265,17 @@ class FDCE : public Gate
 protected:
     DEFPARM   { {"IS_C_INVERTED","1'b0"} };
     NODEFPARM {"INIT"};
-    IPort<1> C;
-    IPort<1> CE;
-    IPort<1> CLR;
-    IPort<1> D;
+    IPort(1) C;
+    IPort(1) CE;
+    IPort(1) CLR;
+    IPort(1) D;
     Portmap _iportmap = {
         PORT(C),
         PORT(CE),
         PORT(CLR),
         PORT(D),
         };
-    OPort<1> Q;
+    OPort(1) Q;
     Portmap _oportmap = {
         PORT(Q),
         };
@@ -302,7 +291,7 @@ protected:
     DEFPARM   {};
     NODEFPARM {};
     Portmap _iportmap = {};
-    OPort<1> G;
+    OPort(1) G;
     Portmap _oportmap = {
         PORT(G),
         };
@@ -320,11 +309,11 @@ class IBUF : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {"CCIO_EN"};
-    IPort<1> I;
+    IPort(1) I;
     Portmap _iportmap = {
         PORT(I),
         };
-    OPort<1> O;
+    OPort(1) O;
     Portmap _oportmap = {
         PORT(O),
         };
@@ -339,9 +328,9 @@ template<unsigned W> class LUT : public Gate
 protected:
     DEFPARM   { { "SOFT_HLUTNM",""}, { "box_type",""} };
     NODEFPARM { "INIT" };
-    IPort<1> I[W];
+    IPort(1) I[W];
     Portmap _iportmap;
-    OPort<1> O;
+    OPort(1) O;
     Portmap _oportmap = {
         PORT(O),
         };
@@ -375,11 +364,11 @@ class OBUF : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {};
-    IPort<1> I;
+    IPort(1) I;
     Portmap _iportmap = {
         PORT(I),
         };
-    OPort<1> O;
+    OPort(1) O;
     Portmap _oportmap = {
         PORT(O),
         };
@@ -392,13 +381,13 @@ class OBUFT : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {};
-    IPort<1> I;
-    IPort<1> T;
+    IPort(1) I;
+    IPort(1) T;
     Portmap _iportmap = {
         PORT(I),
         PORT(T),
         };
-    OPort<1> O;
+    OPort(1) O;
     Portmap _oportmap = {
         PORT(O),
         };
@@ -414,7 +403,7 @@ protected:
     DEFPARM   {};
     NODEFPARM {};
     Portmap _iportmap = {};
-    OPort<1> P;
+    OPort(1) P;
     Portmap _oportmap = {
         PORT(P),
         };
