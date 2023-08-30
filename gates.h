@@ -86,6 +86,7 @@ public:
             [this,gate](Event,unsigned long) { this->handle<0>(gate); } );
         _eventHandlers[1] = new EventHandler( nlsimu->router(), Pin::_eids[1],
             [this,gate](Event,unsigned long) { this->handle<1>(gate); } );
+        for(int i=0; i<Pin::EVENTTYPS; i++) _eventHandlers[i]->start();
     }
     ~IPin()
     {
@@ -432,10 +433,17 @@ public:
 
 class Net
 {
+    list<unsigned> _tevents;
+    EventHandler *_eventHandler;
+    void relay(NLSimulatorBase *nlsimu) { for(auto te:_tevents) nlsimu->sendEvent(te); }
 public:
-    Net(unsigned sevent, list<unsigned> tevents)
+    Net(unsigned sevent, list<unsigned> tevents, NLSimulatorBase *nlsimu) : _tevents(tevents)
     {
+        _eventHandler = new EventHandler( nlsimu->router(), sevent,
+            [this,nlsimu](Event,unsigned long) { this->relay(nlsimu); } );
+        _eventHandler->start();
     }
+    ~Net() { delete _eventHandler; }
 };
 
 typedef tuple<string,unsigned,string,Parlist> t_opi;
@@ -499,7 +507,7 @@ class GateFactory
             list<unsigned> teids;
             for(auto tpin:tpins)
                 teids.push_back( tpin->getEid(i) );
-            auto net = new Net(seid,teids);
+            auto net = new Net(seid,teids,_nlsimu);
             _netlist.push_back( net );
         }
     }

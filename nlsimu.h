@@ -25,8 +25,8 @@
 //   registering and sending events. Begin NLSimulatorBase with just 2 APIs
 class NLSimulator : public NLSimulatorBase
 {
+    EventRouter _simuRouter; // Must be before _factory
     GateFactory _factory;
-    EventRouter _simuRouter;
     using t_pair  = pair<double, unsigned>;
     // Saves the overhead of comparing 2nd member of the pair
     class PriorityLT
