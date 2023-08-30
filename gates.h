@@ -282,6 +282,13 @@ protected:
 public:
     void eval()
     {
+        if ( CLR.state()[0] )
+        {
+            bitset<1> val = 0;
+            Q.set(val,_nlsimu);
+        }
+        else if ( CE.state()[0] and C.state()[0] )
+            Q.set(D.state(),_nlsimu);
     }
 };
 
