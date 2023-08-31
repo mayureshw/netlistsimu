@@ -133,15 +133,17 @@ public:
     PinState<W>( typename bitset<W>::reference state ) : _state(state) {}
 };
 
-template<unsigned W, bool Passive=false> class IPin : public PinState<W>
+template<unsigned W> class IPin : public PinState<W>
 {
 using PinState<W>::PinState;
     EventHandler *_eventHandlers[Pin::EVENTTYPS];
     template<int V> void handle(Gate *gate)
     {
         PinState<W>::_state = V;
-        if constexpr (not Passive) gate->eval();
+        eval(gate);
     }
+protected:
+    virtual void eval(Gate* gate) { gate->eval(); }
 public:
     void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
     {
@@ -156,6 +158,14 @@ public:
         for(int i=0; i<Pin::EVENTTYPS; i++) delete _eventHandlers[i];
     }
 };
+
+template<unsigned W> class PassiveIPin : public IPin<W>
+{
+using IPin<W>::IPin;
+protected:
+    void eval(Gate*) {}
+};
+
 
 typedef function<void(bool,NLSimulatorBase*)> t_setterfn;
 template<unsigned W> class OPin : public PinState<W>
@@ -226,7 +236,7 @@ public:
 };
 
 #define IPort(W) Port<W,IPin<W>>
-#define PassiveIPort(W) Port<W,IPin<W,true>>
+#define PassiveIPort(W) Port<W,PassiveIPin<W>>
 #define OPort(W) Port<W,OPin<W>>
 
 typedef map<string,PortBase*> Portmap;
