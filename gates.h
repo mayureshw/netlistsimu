@@ -274,8 +274,20 @@ protected:
         PORT(O),
         };
 public:
+// See https://github.com/awersatos/AD/blob/master/Library/HDL%20Simulation/Xilinx%20ISE%2012.1%20VHDL%20Libraries/unisim/src/primitive/CARRY4.vhd
     void eval()
     {
+        bool ci_or_cyinit = CI[0] or CYINIT[0];
+
+        bitset<4> CO_out;
+        CO_out[0] = S[0] ? ci_or_cyinit : DI[0];
+        for(int i=1;i<4;i++)  CO_out[i] = S[i] ? CO_out[i-1] : DI[i];
+        CO.set(CO_out,_nlsimu);
+
+        bitset<4> O_out;
+        O_out[0] = S[0] ^ ci_or_cyinit;
+        for(int i=1;i<4;i++)  O_out[i] = S[i] ^ CO_out[i-1];
+        O.set(O_out,_nlsimu);
     }
 };
 
