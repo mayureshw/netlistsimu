@@ -89,7 +89,8 @@ public:
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers()=0;
-    virtual void eval()=0;
+    virtual void evalWithId(unsigned) {}
+    virtual void eval() {}
     virtual void init() {}
     virtual ~Gate() {}
 };
@@ -166,6 +167,12 @@ protected:
     void eval(Gate*) {}
 };
 
+template<unsigned W, unsigned ID> class WithIdIPin : public IPin<W>
+{
+using IPin<W>::IPin;
+protected:
+    void eval(Gate* gate) { gate->evalWithId(ID); }
+};
 
 typedef function<void(bool,NLSimulatorBase*)> t_setterfn;
 template<unsigned W> class OPin : public PinState<W>
@@ -237,6 +244,7 @@ public:
 
 #define IPort(W) Port<W,IPin<W>>
 #define PassiveIPort(W) Port<W,PassiveIPin<W>>
+#define WithIdIPort(W,Id) Port<W,WithIdIPin<W,Id>>
 #define OPort(W) Port<W,OPin<W>>
 
 typedef map<string,PortBase*> Portmap;
@@ -272,12 +280,13 @@ public:
 
 class FDCE : public Gate
 {
+    typedef enum { ID_C, ID_CLR } t_PortId;
 protected:
     DEFPARM   { {"IS_C_INVERTED","1'b0"} };
     NODEFPARM {"INIT"};
-    IPort(1) C;
+    WithIdIPort(1,ID_C) C;
+    WithIdIPort(1,ID_CLR) CLR;
     PassiveIPort(1) CE;
-    IPort(1) CLR;
     PassiveIPort(1) D;
     Portmap _iportmap = {
         PORT(C),
@@ -290,7 +299,7 @@ protected:
         PORT(Q),
         };
 public:
-    void eval()
+    void evalWithId(t_PortId pinid)
     {
         if ( CLR.state()[0] )
         {
@@ -313,7 +322,6 @@ protected:
         PORT(G),
         };
 public:
-    void eval() {}
     void init()
     {
         bitset<1> val = 0;
@@ -425,7 +433,6 @@ protected:
         PORT(P),
         };
 public:
-    void eval() {}
     void init()
     {
         bitset<1> val = 1;
