@@ -300,14 +300,14 @@ protected:
         PORT(Q),
         };
 public:
-    void evalWithId(t_PortId pinid)
+    void evalWithId(t_PortId portid)
     {
         if ( CLR[0] )
         {
             bitset<1> val = 0;
             Q.set(val,_nlsimu);
         }
-        else if ( CE[0] and C[0] )
+        else if ( portid == ID_C and CE[0] and C[0] )
             Q.set(D.state(),_nlsimu);
     }
 };
