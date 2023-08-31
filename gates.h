@@ -432,6 +432,7 @@ protected:
 public:
     void eval()
     {
+        if (T[0]) O.set(I.state(),_nlsimu);
     }
 };
 
