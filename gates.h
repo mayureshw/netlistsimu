@@ -215,6 +215,7 @@ protected:
     bitset<W> _state;
 public:
     bitset<W>& state() { return _state; }
+    bool operator [] ( int i ) { return _state[i]; }
     void set(bitset<W>& val, NLSimulatorBase *nlsimu)
     {
         for(int i=0; i<W; i++) _pins[i]->set(val[i], nlsimu);
@@ -301,12 +302,12 @@ protected:
 public:
     void evalWithId(t_PortId pinid)
     {
-        if ( CLR.state()[0] )
+        if ( CLR[0] )
         {
             bitset<1> val = 0;
             Q.set(val,_nlsimu);
         }
-        else if ( CE.state()[0] and C.state()[0] )
+        else if ( CE[0] and C[0] )
             Q.set(D.state(),_nlsimu);
     }
 };
@@ -370,7 +371,7 @@ public:
     {
         int ival = 0;
         for(int i=0, mask=1; i<W; i++, mask<<=1)
-            if ( I[i].state()[0] ) ival+=mask;
+            if ( I[i][0] ) ival+=mask;
         bitset<1> o = { _o[ival] };
         O.set(o,_nlsimu);
     }
