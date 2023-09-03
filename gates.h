@@ -78,10 +78,14 @@ public:
 };
 
 class Pin;
+class PortBase;
 
+typedef map<string,PortBase*> Portmap;
 class Gate
 {
 protected:
+    Portmap _iportmap;
+    Portmap _oportmap;
     unsigned _opid;
     NLSimulatorBase *_nlsimu;
     virtual void handleParmap(Parmap&) {}
@@ -95,7 +99,6 @@ public:
     virtual ~Gate() {}
 };
 
-class Pin;
 class PortBase
 {
 public:
@@ -260,18 +263,18 @@ public:
     {
         for(int i=0; i<W; i++) delete _pins[i];
     }
-    Port<W,PT>(string name) : _name(name)
+    Port<W,PT>(string name, Portmap& portmap) : _name(name)
     {
+        portmap.emplace(name,this);
         for(int i=0; i<W; i++) _pins[i] = new PT( _state[i], this );
     }
 };
 
-#define IPort(Name,W) Port<W,IPin<W>> Name {#Name}
-#define PassiveIPort(Name,W) Port<W,PassiveIPin<W>> Name {#Name}
-#define WithIdIPort(Name,W,Id) Port<W,WithIdIPin<W,Id>> Name {#Name}
-#define OPort(Name,W) Port<W,OPin<W>> Name {#Name}
+#define IPort(Name,W) Port<W,IPin<W>> Name {#Name,_iportmap}
+#define PassiveIPort(Name,W) Port<W,PassiveIPin<W>> Name {#Name,_iportmap}
+#define WithIdIPort(Name,W,Id) Port<W,WithIdIPin<W,Id>> Name {#Name,_iportmap}
+#define OPort(Name,W) Port<W,OPin<W>> Name {#Name,_oportmap}
 
-typedef map<string,PortBase*> Portmap;
 #define DEFPARM static inline const Parmap _defaults =
 #define NODEFPARM static inline const set<string> _nodefaults =
 #define PORT(PORTNAME) {#PORTNAME,&PORTNAME}
@@ -284,18 +287,8 @@ protected:
     IPort(CI,     1);
     IPort(S,      4);
     IPort(DI,     4);
-    Portmap _iportmap = {
-        PORT(CYINIT),
-        PORT(CI),
-        PORT(S),
-        PORT(DI),
-        };
     OPort(CO, 4);
     OPort(O,  4);
-    Portmap _oportmap = {
-        PORT(CO),
-        PORT(O),
-        };
 public:
 // See https://github.com/awersatos/AD/blob/master/Library/HDL%20Simulation/Xilinx%20ISE%2012.1%20VHDL%20Libraries/unisim/src/primitive/CARRY4.vhd
     void eval()
@@ -324,16 +317,7 @@ protected:
     WithIdIPort(CLR, 1, ID_CLR);
     PassiveIPort(CE, 1);
     PassiveIPort(D,  1);
-    Portmap _iportmap = {
-        PORT(C),
-        PORT(CE),
-        PORT(CLR),
-        PORT(D),
-        };
     OPort(Q,1);
-    Portmap _oportmap = {
-        PORT(Q),
-        };
 public:
     void evalWithId(t_PortId portid)
     {
@@ -352,11 +336,7 @@ class GND : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {};
-    Portmap _iportmap = {};
     OPort(G,1);
-    Portmap _oportmap = {
-        PORT(G),
-        };
 public:
     void init()
     {
@@ -371,13 +351,7 @@ protected:
     DEFPARM   {};
     NODEFPARM {"CCIO_EN"};
     IPort(I,1);
-    Portmap _iportmap = {
-        PORT(I),
-        };
     OPort(O,1);
-    Portmap _oportmap = {
-        PORT(O),
-        };
 public:
     void eval() { O.set(I.state(),_nlsimu); }
 };
@@ -390,11 +364,7 @@ protected:
     DEFPARM   { { "SOFT_HLUTNM",""}, { "box_type",""} };
     NODEFPARM { "INIT" };
     Port<1,IPin<1>> *I[W];
-    Portmap _iportmap;
     OPort(O,1);
-    Portmap _oportmap = {
-        PORT(O),
-        };
     void handleParmap(Parmap& parmap)
     {
         auto init = parmap["INIT"];
@@ -415,8 +385,7 @@ public:
         for(int i=0; i<W; i++)
         {
             string portname = "I" + to_string(i);
-            I[i] = new Port<1,IPin<1>>( portname );
-            _iportmap.emplace(portname,I[i]);
+            I[i] = new Port<1,IPin<1>>( portname, _iportmap );
         }
     }
     ~LUT<W>() { for(int i=0; i<W; i++) delete I[i]; }
@@ -428,13 +397,7 @@ protected:
     DEFPARM   {};
     NODEFPARM {};
     IPort(I,1);
-    Portmap _iportmap = {
-        PORT(I),
-        };
     OPort(O,1);
-    Portmap _oportmap = {
-        PORT(O),
-        };
 public:
     void eval() { O.set(I.state(),_nlsimu); }
 };
@@ -446,14 +409,7 @@ protected:
     NODEFPARM {};
     IPort(I,1);
     IPort(T,1);
-    Portmap _iportmap = {
-        PORT(I),
-        PORT(T),
-        };
     OPort(O,1);
-    Portmap _oportmap = {
-        PORT(O),
-        };
 public:
     void eval()
     {
@@ -466,11 +422,7 @@ class VCC : public Gate
 protected:
     DEFPARM   {};
     NODEFPARM {};
-    Portmap _iportmap = {};
     OPort(P,1);
-    Portmap _oportmap = {
-        PORT(P),
-        };
 public:
     void init()
     {
