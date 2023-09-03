@@ -96,7 +96,7 @@ public:
         unique_lock<mutex> ulockq(_rqmutex);
         _rq_cvar.wait(ulockq, [this](){return _rq.empty();});
     }
-    void setPin(unsigned pinid, bool tv) { _factory.setPin(pinid,tv); }
+    template<unsigned W> void setPort(unsigned opid, string portname, bitset<W> val) { _factory.setPort<W>(opid,portname,val); }
     EventRouter& router() { return _simuRouter; }
     NLSimulator(string netlistir) : _factory(netlistir,this)
     {

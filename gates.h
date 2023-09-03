@@ -111,7 +111,10 @@ private:
 protected:
     unsigned _eids[EVENTTYPS];
 public:
+    virtual bool isSysInp() { return false; }
+    virtual void markDriven() {}
     virtual void set(bool val, NLSimulatorBase *nlsimu) {}
+    virtual void setViaEvent(bool val, NLSimulatorBase *nlsimu) {}
     virtual void setEventHandlers(Gate *, NLSimulatorBase *) {}
     void setEid(unsigned index, unsigned eid)
     {
@@ -137,6 +140,7 @@ public:
 template<unsigned W> class IPin : public PinState<W>
 {
 using PinState<W>::PinState;
+    bool _isSysInp = true; // Marked false explicitly if driven
     EventHandler *_eventHandlers[Pin::EVENTTYPS];
     template<int V> void handle(Gate *gate)
     {
@@ -146,6 +150,8 @@ using PinState<W>::PinState;
 protected:
     virtual void eval(Gate* gate) { gate->eval(); }
 public:
+    bool isSysInp() { return _isSysInp; }
+    void markDriven() { _isSysInp = false; }
     void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
     {
         _eventHandlers[0] = new EventHandler( nlsimu->router(), Pin::_eids[0],
@@ -153,6 +159,11 @@ public:
         _eventHandlers[1] = new EventHandler( nlsimu->router(), Pin::_eids[1],
             [this,gate](Event,unsigned long) { this->handle<1>(gate); } );
         for(int i=0; i<Pin::EVENTTYPS; i++) _eventHandlers[i]->start();
+    }
+    void setViaEvent(bool val, NLSimulatorBase *nlsimu)
+    {
+        auto eid = Pin::getEid( val ? 1 : 0 );
+        nlsimu->sendEvent( eid );
     }
     ~IPin()
     {
@@ -605,8 +616,9 @@ class GateFactory
         list<Pin*> tpins;
         for(auto tpinid:tpinids)
         {
-            tpins.push_back( getPinFromMap(tpinid) );
-            _inpinset.erase( tpinid );
+            auto tpin = getPinFromMap( tpinid );
+            tpins.push_back( tpin );
+            tpin->markDriven();
         }
         for(int i=0; i<Pin::EVENTTYPS; i++)
         {
@@ -665,16 +677,20 @@ class GateFactory
         _gatemap.emplace(opid,gate);
     }
 public:
-    void setPin(unsigned pinid, bool tv)
+    // TODO: To set limited pins of a port suitable api variant can be added
+    template<unsigned W> void setPort(unsigned opid, string portname, bitset<W> val)
     {
-        if ( not isSysInpPin(pinid) )
+        auto gate = getGate(opid);
+        for( int i=0; i<W; i++ )
         {
-            cout << "setPin invoked on non system input pin " << pinid << endl;
-            exit(1);
+            auto pin = gate->getIPin(portname, i);
+            if ( not pin->isSysInp() )
+            {
+                cout << "set invoked on non system input pin " << opid <<  " " << portname << " " << i << endl;
+                exit(1);
+            }
+            pin->setViaEvent( val[i], _nlsimu );
         }
-        auto pin = getPinFromMap(pinid);
-        auto eid = pin->getEid( tv ? 1 : 0 );
-        _nlsimu->sendEvent( eid );
     }
     // Note: init must be called after construction of factory
     // since it does sendEvent, which needs to happen from a different thread
