@@ -97,6 +97,8 @@ public:
         _rq_cvar.wait(ulockq, [this](){return _rq.empty();});
     }
     template<unsigned W> void setPort(unsigned opid, string portname, bitset<W> val) { _factory.setPort<W>(opid,portname,val); }
+    void watch(unsigned opid, string portname) { _factory.watch(opid,portname); }
+    void unwatch(unsigned opid, string portname) { _factory.unwatch(opid,portname); }
     EventRouter& router() { return _simuRouter; }
     NLSimulator(string netlistir) : _factory(netlistir,this)
     {

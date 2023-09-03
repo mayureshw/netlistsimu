@@ -97,6 +97,15 @@ public:
     virtual void eval() {}
     virtual void init() {}
     virtual ~Gate() {}
+    PortBase* getPort(string portname)
+    {
+        auto it1 = _iportmap.find(portname);
+        if ( it1 != _iportmap.end() ) return it1->second;
+        auto it2 = _oportmap.find(portname);
+        if ( it2 != _oportmap.end() ) return it2->second;
+        cout << "Could not find port " << portname << endl;
+        exit(1);
+    }
 };
 
 class PortBase
@@ -105,6 +114,8 @@ public:
     virtual void setEventHandlers(Gate *, NLSimulatorBase *)=0;
     virtual Pin* getPin(unsigned index)=0;
     virtual void notify()=0;
+    virtual void watch()=0;
+    virtual void unwatch()=0;
 };
 
 class Pin
@@ -652,6 +663,8 @@ public:
             pin->setViaEvent( val[i], _nlsimu );
         }
     }
+    void watch(unsigned opid, string portname) { getGate(opid)->getPort(portname)->watch(); }
+    void unwatch(unsigned opid, string portname) { getGate(opid)->getPort(portname)->unwatch(); }
     // Note: init must be called after construction of factory
     // since it does sendEvent, which needs to happen from a different thread
     void init()
