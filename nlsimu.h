@@ -58,6 +58,7 @@ class NLSimulator : public NLSimulatorBase
             _rq.pop();
             _rqmutex.unlock();
             _simuRouter.route(eid,0);
+            cout << "event " << eid << endl;
         }
     }
     void simuloop() // TODO: This needs some work, here and in petrinet.h
@@ -71,13 +72,15 @@ class NLSimulator : public NLSimulatorBase
         } while ( not simuend() );
     }
     thread _simuthread {&NLSimulator::simuloop,this};
-    void notify() { _rq_cvar.notify_one(); }
+    void notify() { _rq_cvar.notify_all(); }
+    void wait() { _simuthread.join(); }
 public:
     void init() { _factory.init(); }
     void quit()
     {
         _quit = true;
         notify();
+        wait();
     }
     void sendEvent(unsigned long eid)
     {
@@ -87,7 +90,12 @@ public:
         _rqmutex.unlock();
         notify();
     }
-    void wait() { _simuthread.join(); }
+    void waitTillStable()
+    {
+        unique_lock<mutex> ulockq(_rqmutex);
+        _rq_cvar.wait(ulockq, [this](){return _rq.empty();});
+    }
+    void setPin(unsigned pinid, bool tv) { _factory.setPin(pinid,tv); }
     EventRouter& router() { return _simuRouter; }
     NLSimulator(string netlistir) : _factory(netlistir,this)
     {

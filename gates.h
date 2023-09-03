@@ -568,8 +568,14 @@ class GateFactory
         CREATE( LUT6, LUT<6> ),
     };
     map< unsigned, Gate* > _gatemap;
+    set< unsigned > _inpinset;
     list<Net*> _netlist;
     NLSimulatorBase *_nlsimu;
+    bool isSysInpPin(unsigned pinid)
+    {
+        auto it = _inpinset.find(pinid);
+        return it != _inpinset.end();
+    }
     Gate* getGate(unsigned index)
     {
         auto it = _gatemap.find(index);
@@ -597,7 +603,10 @@ class GateFactory
         auto spin = getPinFromMap(spinid,pinmap);
         list<Pin*> tpins;
         for(auto tpinid:tpinids)
+        {
             tpins.push_back( getPinFromMap(tpinid,pinmap) );
+            _inpinset.erase( tpinid );
+        }
         for(int i=0; i<Pin::EVENTTYPS; i++)
         {
             auto seid = spin->getEid(i);
@@ -625,7 +634,10 @@ class GateFactory
         auto gate = getGate(opid);
         Pin *pin;
         if constexpr ( isipin )
+        {
             pin = gate->getIPin(portname,pinindex);
+            _inpinset.insert(pinindex); // Note: later removed if found driven
+        }
         else
             pin = gate->getOPin(portname,pinindex);
         pinmap.emplace(pinid,pin);
@@ -652,6 +664,14 @@ class GateFactory
         _gatemap.emplace(opid,gate);
     }
 public:
+    void setPin(unsigned pinid, bool tv)
+    {
+        if ( not isSysInpPin(pinid) )
+        {
+            cout << "setPin invoked on non system input pin " << pinid << endl;
+            exit(1);
+        }
+    }
     // Note: init must be called after construction of factory
     // since it does sendEvent, which needs to happen from a different thread
     void init()
