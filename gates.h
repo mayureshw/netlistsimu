@@ -232,15 +232,19 @@ public:
 template<unsigned W, typename PT> class Port : public PortBase
 {
     string _name;
+    bool _watch = false;
 protected:
     PT *_pins[W];
     bitset<W> _state;
 public:
+    void watch() { _watch = true; }
+    void unwatch() { _watch = false; }
     bitset<W>& state() { return _state; }
     bool operator [] ( int i ) { return _state[i]; }
     void notify()
     {
-        cout << "watch:" << _name << ":" << _state << endl;
+        if ( _watch )
+            cout << "watch:" << _name << ":" << _state << endl;
     }
     void set(bitset<W>& val, NLSimulatorBase *nlsimu)
     {
