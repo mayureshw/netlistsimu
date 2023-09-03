@@ -579,15 +579,8 @@ class GateFactory
         CREATE( LUT6, LUT<6> ),
     };
     map< unsigned, Gate* > _gatemap;
-    set< unsigned > _inpinset;
     list<Net*> _netlist;
     NLSimulatorBase *_nlsimu;
-    t_pinmap _pinmap;
-    bool isSysInpPin(unsigned pinid)
-    {
-        auto it = _inpinset.find(pinid);
-        return it != _inpinset.end();
-    }
     Gate* getGate(unsigned index)
     {
         auto it = _gatemap.find(index);
@@ -598,25 +591,25 @@ class GateFactory
         }
         return it->second;
     }
-    Pin* getPinFromMap(unsigned pinid)
+    Pin* getPinFromMap(unsigned pinid, t_pinmap& pinmap)
     {
-        auto it = _pinmap.find(pinid);
-        if ( it == _pinmap.end() )
+        auto it = pinmap.find(pinid);
+        if ( it == pinmap.end() )
         {
             cout << "Invalid pin id sought " << pinid << endl;
             exit(1);
         }
         return it->second;
     }
-    void process_net(t_net& nett)
+    void process_net(t_net& nett, t_pinmap& pinmap)
     {
         auto spinid = get<1>(nett);
         auto tpinids = get<2>(nett);
-        auto spin = getPinFromMap(spinid);
+        auto spin = getPinFromMap(spinid, pinmap);
         list<Pin*> tpins;
         for(auto tpinid:tpinids)
         {
-            auto tpin = getPinFromMap( tpinid );
+            auto tpin = getPinFromMap( tpinid, pinmap );
             tpins.push_back( tpin );
             tpin->markDriven();
         }
@@ -630,15 +623,15 @@ class GateFactory
             _netlist.push_back( net );
         }
     }
-    void process_ev(t_ev& evt)
+    void process_ev(t_ev& evt, t_pinmap& pinmap)
     {
         auto eid = get<1>(evt);
         auto pinid = get<2>(evt);
         auto tv = get<3>(evt);
-        auto pin = getPinFromMap(pinid);
+        auto pin = getPinFromMap(pinid, pinmap);
         pin->setEid(tv,eid);
     }
-    template<bool isipin> void process_pin(t_pin& pint)
+    template<bool isipin> void process_pin(t_pin& pint, t_pinmap& pinmap)
     {
         auto pinid = get<1>(pint);
         auto opid = get<2>(pint);
@@ -647,13 +640,10 @@ class GateFactory
         auto gate = getGate(opid);
         Pin *pin;
         if constexpr ( isipin )
-        {
             pin = gate->getIPin(portname,pinindex);
-            _inpinset.insert(pinindex); // Note: later removed if found driven
-        }
         else
             pin = gate->getOPin(portname,pinindex);
-        _pinmap.emplace(pinid,pin);
+        pinmap.emplace(pinid,pin);
     }
     void process_opi(t_opi& opit)
     {
@@ -711,17 +701,18 @@ public:
         auto opil = netlistdb.terms2tuples<t_opi>(ps_opi);
         for(auto opit : opil) process_opi(opit);
 
+        t_pinmap pinmap;
         auto ipinl = netlistdb.terms2tuples<t_pin>(ps_ipin);
-        for(auto ipint:ipinl) process_pin<true>(ipint);
+        for(auto ipint:ipinl) process_pin<true>(ipint, pinmap);
 
         auto opinl = netlistdb.terms2tuples<t_pin>(ps_opin);
-        for(auto opint:opinl) process_pin<false>(opint);
+        for(auto opint:opinl) process_pin<false>(opint, pinmap);
 
         auto evl = netlistdb.terms2tuples<t_ev>(ps_ev);
-        for(auto evt : evl) process_ev(evt);
+        for(auto evt : evl) process_ev(evt, pinmap);
 
         auto netl = netlistdb.terms2tuples<t_net>(ps_net);
-        for(auto nett : netl) process_net(nett);
+        for(auto nett : netl) process_net(nett, pinmap);
 
         // set event handlers after all pins know their events
         for(auto ig:_gatemap) ig.second->setEventHandlers();
