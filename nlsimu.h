@@ -59,7 +59,7 @@ class NLSimulator : public NLSimulatorBase
             _rqmutex.unlock();
             notify(); // For convenience of waitTillStable
             _simuRouter.route(eid,0);
-            cout << "event " << eid << endl;
+            cout << "event:" << eid << endl;
         }
     }
     void simuloop() // TODO: This needs some work, here and in petrinet.h
