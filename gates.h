@@ -242,6 +242,7 @@ public:
 
 template<unsigned W, typename PT> class Port : public PortBase
 {
+    Gate *_gate;
     string _name;
     bool _watch = false;
 protected:
@@ -278,17 +279,17 @@ public:
     {
         for(int i=0; i<W; i++) delete _pins[i];
     }
-    Port<W,PT>(string name, Portmap& portmap) : _name(name)
+    Port<W,PT>(Gate *gate, string name, Portmap& portmap) : _gate(gate), _name(name)
     {
         portmap.emplace(name,this);
         for(int i=0; i<W; i++) _pins[i] = new PT( _state[i], this );
     }
 };
 
-#define IPort(Name,W) Port<W,IPin<W>> Name {#Name,_iportmap}
-#define PassiveIPort(Name,W) Port<W,PassiveIPin<W>> Name {#Name,_iportmap}
-#define WithIdIPort(Name,W,Id) Port<W,WithIdIPin<W,Id>> Name {#Name,_iportmap}
-#define OPort(Name,W) Port<W,OPin<W>> Name {#Name,_oportmap}
+#define IPort(Name,W) Port<W,IPin<W>> Name {this, #Name,_iportmap}
+#define PassiveIPort(Name,W) Port<W,PassiveIPin<W>> Name {this, #Name,_iportmap}
+#define WithIdIPort(Name,W,Id) Port<W,WithIdIPin<W,Id>> Name {this, #Name,_iportmap}
+#define OPort(Name,W) Port<W,OPin<W>> Name {this, #Name,_oportmap}
 
 #define DEFPARM static inline const Parmap _defaults =
 #define NODEFPARM static inline const set<string> _nodefaults =
@@ -400,7 +401,7 @@ public:
         for(int i=0; i<W; i++)
         {
             string portname = "I" + to_string(i);
-            I[i] = new Port<1,IPin<1>>( portname, _iportmap );
+            I[i] = new Port<1,IPin<1>>( this, portname, _iportmap );
         }
     }
     ~LUT<W>() { for(int i=0; i<W; i++) delete I[i]; }
