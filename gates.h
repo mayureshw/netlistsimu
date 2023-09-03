@@ -94,8 +94,7 @@ public:
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers()=0;
-    virtual void evalWithId(unsigned) {}
-    virtual void eval() {}
+    virtual void eval(PortBase*) {}
     virtual void init() {}
     virtual ~Gate() {}
     PortBase* getPort(string portname)
@@ -117,6 +116,8 @@ public:
     virtual void notify()=0;
     virtual void watch()=0;
     virtual void unwatch()=0;
+    virtual Gate* gate()=0;
+    virtual void eval()=0;
 };
 
 class Pin
@@ -169,23 +170,23 @@ template<unsigned W> class IPin : public PinState<W>
 using PinState<W>::PinState;
     bool _isSysInp = true; // Marked false explicitly if driven
     EventHandler *_eventHandlers[Pin::EVENTTYPS];
-    template<int V> void handle(Gate *gate)
+    template<int V> void handle()
     {
         PinState<W>::_state = V;
         Pin::_port->notify();
-        eval(gate);
+        eval();
     }
 protected:
-    virtual void eval(Gate* gate) { gate->eval(); }
+    virtual void eval() { Pin::_port->eval(); }
 public:
     bool isSysInp() { return _isSysInp; }
     void markDriven() { _isSysInp = false; }
     void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
     {
         _eventHandlers[0] = new EventHandler( nlsimu->router(), Pin::_eids[0],
-            [this,gate](Event,unsigned long) { this->handle<0>(gate); } );
+            [this,gate](Event,unsigned long) { this->handle<0>(); } );
         _eventHandlers[1] = new EventHandler( nlsimu->router(), Pin::_eids[1],
-            [this,gate](Event,unsigned long) { this->handle<1>(gate); } );
+            [this,gate](Event,unsigned long) { this->handle<1>(); } );
         for(int i=0; i<Pin::EVENTTYPS; i++) _eventHandlers[i]->start();
     }
     void setViaEvent(bool val, NLSimulatorBase *nlsimu)
@@ -203,14 +204,7 @@ template<unsigned W> class PassiveIPin : public IPin<W>
 {
 using IPin<W>::IPin;
 protected:
-    void eval(Gate*) {}
-};
-
-template<unsigned W, unsigned ID> class WithIdIPin : public IPin<W>
-{
-using IPin<W>::IPin;
-protected:
-    void eval(Gate* gate) { gate->evalWithId(ID); }
+    void eval() {}
 };
 
 typedef function<void(bool,NLSimulatorBase*)> t_setterfn;
@@ -250,6 +244,8 @@ protected:
     PT *_pins[W];
     bitset<W> _state;
 public:
+    void eval() { _gate->eval(this); }
+    Gate* gate() { return _gate; }
     void watch() { _watch = true; }
     void unwatch() { _watch = false; }
     bitset<W>& state() { return _state; }
@@ -289,7 +285,6 @@ public:
 
 #define IPort(Name,W) Port<W,IPin<W>> Name {this, #Name,_iportmap}
 #define PassiveIPort(Name,W) Port<W,PassiveIPin<W>> Name {this, #Name,_iportmap}
-#define WithIdIPort(Name,W,Id) Port<W,WithIdIPin<W,Id>> Name {this, #Name,_iportmap}
 #define OPort(Name,W) Port<W,OPin<W>> Name {this, #Name,_oportmap}
 
 #define DEFPARM static inline const Parmap _defaults =
@@ -308,7 +303,7 @@ protected:
     OPort(O,  4);
 public:
 // See https://github.com/awersatos/AD/blob/master/Library/HDL%20Simulation/Xilinx%20ISE%2012.1%20VHDL%20Libraries/unisim/src/primitive/CARRY4.vhd
-    void eval()
+    void eval(PortBase*)
     {
         bool ci_or_cyinit = CI[0] or CYINIT[0];
 
@@ -326,24 +321,23 @@ public:
 
 class FDCE : public Gate
 {
-    typedef enum { ID_C, ID_CLR } t_PortId;
 protected:
     DEFPARM   { {"IS_C_INVERTED","1'b0"} };
     NODEFPARM {"INIT"};
-    WithIdIPort(C,   1, ID_C);
-    WithIdIPort(CLR, 1, ID_CLR);
+    IPort(C,   1);
+    IPort(CLR, 1);
     PassiveIPort(CE, 1);
     PassiveIPort(D,  1);
     OPort(Q,1);
 public:
-    void evalWithId(t_PortId portid)
+    void eval(PortBase *port)
     {
         if ( CLR[0] )
         {
             bitset<1> val = 0;
             Q.set(val,_nlsimu);
         }
-        else if ( portid == ID_C and CE[0] and C[0] )
+        else if ( port == &C and CE[0] and C[0] )
             Q.set(D.state(),_nlsimu);
     }
 };
@@ -370,7 +364,7 @@ protected:
     IPort(I,1);
     OPort(O,1);
 public:
-    void eval() { O.set(I.state(),_nlsimu); }
+    void eval(PortBase*) { O.set(I.state(),_nlsimu); }
 };
 
 #define LUTSZ 1<<W
@@ -389,7 +383,7 @@ protected:
         _o = initconst.as_bitset();
     }
 public:
-    void eval()
+    void eval(PortBase*)
     {
         int ival = 0;
         for(int i=0, mask=1; i<W; i++, mask<<=1)
@@ -416,7 +410,7 @@ protected:
     IPort(I,1);
     OPort(O,1);
 public:
-    void eval() { O.set(I.state(),_nlsimu); }
+    void eval(PortBase*) { O.set(I.state(),_nlsimu); }
 };
 
 class OBUFT : public Gate
@@ -428,7 +422,7 @@ protected:
     IPort(T,1);
     OPort(O,1);
 public:
-    void eval()
+    void eval(PortBase*)
     {
         if (T[0]) O.set(I.state(),_nlsimu);
     }
