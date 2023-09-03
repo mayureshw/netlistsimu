@@ -215,7 +215,7 @@ public:
 class PortBase
 {
 public:
-    virtual void setEventHandlers(Gate *, NLSimulatorBase *) {}
+    virtual void setEventHandlers(Gate *, NLSimulatorBase *)=0;
     virtual Pin* getPin(unsigned index)=0;
 };
 
