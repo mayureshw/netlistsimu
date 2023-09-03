@@ -672,6 +672,9 @@ public:
             cout << "setPin invoked on non system input pin " << pinid << endl;
             exit(1);
         }
+        auto pin = getPinFromMap(pinid);
+        auto eid = pin->getEid( tv ? 1 : 0 );
+        _nlsimu->sendEvent( eid );
     }
     // Note: init must be called after construction of factory
     // since it does sendEvent, which needs to happen from a different thread

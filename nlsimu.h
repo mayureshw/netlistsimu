@@ -57,6 +57,7 @@ class NLSimulator : public NLSimulatorBase
             auto eid = _rq.top().second;
             _rq.pop();
             _rqmutex.unlock();
+            notify(); // For convenience of waitTillStable
             _simuRouter.route(eid,0);
             cout << "event " << eid << endl;
         }
