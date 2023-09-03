@@ -28,6 +28,7 @@ class EdifIR:
         pname = self.portname(port)
         for pinindex in range(len(port.pins)): self.processPin(direction,iid,pname,pinindex)
     def processInst(self,inst):
+        lname = inst.name
         iname = self.instname(inst)
         iid = self.instid(iname)
         typ = PAtom(inst.reference.name)
@@ -36,6 +37,8 @@ class EdifIR:
             for propd in inst.data.get('EDIF.properties',[])
             )
         term = PTerm('opi',[iid, typ, generics])
+        print(str(term)+'.')
+        term = PTerm('iname',[iid, PAtom(lname)])
         print(str(term)+'.')
         for port in inst.get_ports(): self.processPort(iid,port)
     def wire2driver(self,w):
