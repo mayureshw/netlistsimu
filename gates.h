@@ -112,7 +112,7 @@ public:
 class PortBase
 {
 public:
-    virtual void setEventHandlers(Gate *, NLSimulatorBase *)=0;
+    virtual void setEventHandlers(NLSimulatorBase *)=0;
     virtual Pin* getPin(unsigned index)=0;
     virtual void notify()=0;
     virtual void watch()=0;
@@ -272,9 +272,9 @@ public:
         }
         return _pins[index];
     }
-    void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
+    void setEventHandlers(NLSimulatorBase *nlsimu)
     {
-        for(int i=0; i<W; i++) _pins[i]->setEventHandlers(gate,nlsimu);
+        for(int i=0; i<W; i++) _pins[i]->setEventHandlers(_gate,nlsimu);
     }
     ~Port()
     {
@@ -509,7 +509,7 @@ template<typename T> class GateMethods : public T
 public:
     void setEventHandlers()
     {
-        for(auto ip:T::_iportmap) ip.second->setEventHandlers(this,Gate::_nlsimu);
+        for(auto ip:T::_iportmap) ip.second->setEventHandlers(Gate::_nlsimu);
     }
     // TODO: ideally should have getPin<bool>, but no virtual function templates allowed. Any other way?
     Pin* getIPin(string portname, unsigned pinindex) { return getPin<true>(portname,pinindex); }
