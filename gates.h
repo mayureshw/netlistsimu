@@ -101,6 +101,7 @@ class PortBase
 public:
     virtual void setEventHandlers(Gate *, NLSimulatorBase *)=0;
     virtual Pin* getPin(unsigned index)=0;
+    virtual void notify()=0;
 };
 
 class Pin
@@ -108,7 +109,6 @@ class Pin
 public:
     inline static const unsigned EVENTTYPS = 2;
 private:
-    PortBase *_port;
     void validateIndex(unsigned index)
     {
         if ( index >= EVENTTYPS )
@@ -118,6 +118,7 @@ private:
         }
     }
 protected:
+    PortBase *_port;
     unsigned _eids[EVENTTYPS];
 public:
     virtual bool isSysInp() { return false; }
@@ -156,6 +157,7 @@ using PinState<W>::PinState;
     template<int V> void handle(Gate *gate)
     {
         PinState<W>::_state = V;
+        Pin::_port->notify();
         eval(gate);
     }
 protected:
@@ -206,6 +208,7 @@ using PinState<W>::PinState;
     void _do_set(bool val, NLSimulatorBase *nlsimu)
     {
         PinState<W>::_state = val;
+        Pin::_port->notify();
         nlsimu->sendEvent( Pin::_eids[val] );
     }
     t_setterfn
@@ -231,6 +234,10 @@ protected:
 public:
     bitset<W>& state() { return _state; }
     bool operator [] ( int i ) { return _state[i]; }
+    void notify()
+    {
+        cout << "Port changed " << _state << endl;
+    }
     void set(bitset<W>& val, NLSimulatorBase *nlsimu)
     {
         for(int i=0; i<W; i++) _pins[i]->set(val[i], nlsimu);
