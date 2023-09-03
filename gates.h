@@ -571,6 +571,7 @@ class GateFactory
     set< unsigned > _inpinset;
     list<Net*> _netlist;
     NLSimulatorBase *_nlsimu;
+    t_pinmap _pinmap;
     bool isSysInpPin(unsigned pinid)
     {
         auto it = _inpinset.find(pinid);
@@ -586,25 +587,25 @@ class GateFactory
         }
         return it->second;
     }
-    Pin* getPinFromMap(unsigned pinid, t_pinmap& pinmap)
+    Pin* getPinFromMap(unsigned pinid)
     {
-        auto it = pinmap.find(pinid);
-        if ( it == pinmap.end() )
+        auto it = _pinmap.find(pinid);
+        if ( it == _pinmap.end() )
         {
             cout << "Invalid pin id sought " << pinid << endl;
             exit(1);
         }
         return it->second;
     }
-    void process_net(t_net& nett, t_pinmap& pinmap)
+    void process_net(t_net& nett)
     {
         auto spinid = get<1>(nett);
         auto tpinids = get<2>(nett);
-        auto spin = getPinFromMap(spinid,pinmap);
+        auto spin = getPinFromMap(spinid);
         list<Pin*> tpins;
         for(auto tpinid:tpinids)
         {
-            tpins.push_back( getPinFromMap(tpinid,pinmap) );
+            tpins.push_back( getPinFromMap(tpinid) );
             _inpinset.erase( tpinid );
         }
         for(int i=0; i<Pin::EVENTTYPS; i++)
@@ -617,15 +618,15 @@ class GateFactory
             _netlist.push_back( net );
         }
     }
-    void process_ev(t_ev& evt, t_pinmap& pinmap)
+    void process_ev(t_ev& evt)
     {
         auto eid = get<1>(evt);
         auto pinid = get<2>(evt);
         auto tv = get<3>(evt);
-        auto pin = getPinFromMap(pinid, pinmap);
+        auto pin = getPinFromMap(pinid);
         pin->setEid(tv,eid);
     }
-    template<bool isipin> void process_pin(t_pin& pint, t_pinmap& pinmap)
+    template<bool isipin> void process_pin(t_pin& pint)
     {
         auto pinid = get<1>(pint);
         auto opid = get<2>(pint);
@@ -640,7 +641,7 @@ class GateFactory
         }
         else
             pin = gate->getOPin(portname,pinindex);
-        pinmap.emplace(pinid,pin);
+        _pinmap.emplace(pinid,pin);
     }
     void process_opi(t_opi& opit)
     {
@@ -691,18 +692,17 @@ public:
         auto opil = netlistdb.terms2tuples<t_opi>(ps_opi);
         for(auto opit : opil) process_opi(opit);
 
-        t_pinmap pinmap;
         auto ipinl = netlistdb.terms2tuples<t_pin>(ps_ipin);
-        for(auto ipint:ipinl) process_pin<true>(ipint,pinmap);
+        for(auto ipint:ipinl) process_pin<true>(ipint);
 
         auto opinl = netlistdb.terms2tuples<t_pin>(ps_opin);
-        for(auto opint:opinl) process_pin<false>(opint,pinmap);
+        for(auto opint:opinl) process_pin<false>(opint);
 
         auto evl = netlistdb.terms2tuples<t_ev>(ps_ev);
-        for(auto evt : evl) process_ev(evt,pinmap);
+        for(auto evt : evl) process_ev(evt);
 
         auto netl = netlistdb.terms2tuples<t_net>(ps_net);
-        for(auto nett : netl) process_net(nett,pinmap);
+        for(auto nett : netl) process_net(nett);
 
         // set event handlers after all pins know their events
         for(auto ig:_gatemap) ig.second->setEventHandlers();
