@@ -90,6 +90,7 @@ protected:
     NLSimulatorBase *_nlsimu;
     virtual void handleParmap(Parmap&) {}
 public:
+    unsigned opid() { return _opid; }
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers()=0;
@@ -256,7 +257,7 @@ public:
     void notify()
     {
         if ( _watch )
-            cout << "watch:" << _name << ":" << _state << endl;
+            cout << "watch:" << _gate->opid() << ":" << _name << ":" << _state << endl;
     }
     void set(bitset<W>& val, NLSimulatorBase *nlsimu)
     {
