@@ -95,11 +95,20 @@ public:
     virtual ~Gate() {}
 };
 
+class Pin;
+class PortBase
+{
+public:
+    virtual void setEventHandlers(Gate *, NLSimulatorBase *)=0;
+    virtual Pin* getPin(unsigned index)=0;
+};
+
 class Pin
 {
 public:
     inline static const unsigned EVENTTYPS = 2;
 private:
+    PortBase *_port;
     void validateIndex(unsigned index)
     {
         if ( index >= EVENTTYPS )
@@ -126,6 +135,7 @@ public:
         validateIndex(index);
         return _eids[index];
     }
+    Pin(PortBase *port) : _port(port) {}
     virtual ~Pin() {}
 };
 
@@ -134,7 +144,8 @@ template<unsigned W> class PinState : public Pin
 protected:
     typename bitset<W>::reference _state;
 public:
-    PinState<W>( typename bitset<W>::reference state ) : _state(state) {}
+    PinState<W>( typename bitset<W>::reference state, PortBase *port )
+        : _state(state), Pin(port) {}
 };
 
 template<unsigned W> class IPin : public PinState<W>
@@ -212,13 +223,6 @@ public:
     void set(bool val, NLSimulatorBase *nlsimu) { this->_setter(val,nlsimu); }
 };
 
-class PortBase
-{
-public:
-    virtual void setEventHandlers(Gate *, NLSimulatorBase *)=0;
-    virtual Pin* getPin(unsigned index)=0;
-};
-
 template<unsigned W, typename PT> class Port : public PortBase
 {
 protected:
@@ -250,7 +254,7 @@ public:
     }
     Port<W,PT>()
     {
-        for(int i=0; i<W; i++) _pins[i] = new PT( _state[i] );
+        for(int i=0; i<W; i++) _pins[i] = new PT( _state[i], this );
     }
 };
 
