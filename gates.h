@@ -218,7 +218,7 @@ using PinState<W>::PinState;
     {
         PinState<W>::_state = val;
         Pin::_port->notify();
-        nlsimu->sendEvent( Pin::_eids[val] );
+        nlsimu->sendEventImmediate( Pin::_eids[val] );
     }
     t_setterfn
         _set_init = [this](bool val, NLSimulatorBase *nlsimu)

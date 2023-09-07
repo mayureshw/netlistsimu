@@ -45,6 +45,11 @@ class NLSimulator : public NLSimulatorBase
     bool _quit = false;
     bool simuend() { return _quit and _rq.empty(); }
     bool waitover() { return not _rq.empty() or _quit; }
+    void route(Event eid)
+    {
+        _simuRouter.route(eid,0);
+        cout << "event:" << eid << endl;
+    }
     void _simuloop()
     {
         while ( true )
@@ -59,8 +64,7 @@ class NLSimulator : public NLSimulatorBase
             _rq.pop();
             _rqmutex.unlock();
             notify(); // For convenience of waitTillStable
-            _simuRouter.route(eid,0);
-            cout << "event:" << eid << endl;
+            route(eid);
         }
     }
     void simuloop() // TODO: This needs some work, here and in petrinet.h
@@ -84,7 +88,8 @@ public:
         notify();
         wait();
     }
-    void sendEvent(unsigned long eid)
+    void sendEventImmediate(Event eid) { route(eid); }
+    void sendEvent(Event eid)
     {
         auto prio = _udistr(_rng);
         _rqmutex.lock();
