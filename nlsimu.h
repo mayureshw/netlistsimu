@@ -5,6 +5,7 @@
 #include <mutex>
 #include <queue>
 #include <random>
+#include <condition_variable>
 #include "gates.h"
 
 // TODO: Complete simulator without CEP first.
