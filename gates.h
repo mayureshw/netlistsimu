@@ -181,10 +181,10 @@ using PinState<W>::PinState;
 protected:
     virtual void eval() { Pin::_port->eval(); }
 public:
-    void init()
-    {
-        if ( isSysInp() ); // TODO
-    }
+    // Note: Sole purpose of initializing system input pins is to trigger
+    // events such that all combinational outputs are consistent with their
+    // inputs. Actual value of initialization doesn't matter.
+    void init() { if ( isSysInp() ) handle<0>(); }
     bool isSysInp() { return _isSysInp; }
     void markDriven() { _isSysInp = false; }
     void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)

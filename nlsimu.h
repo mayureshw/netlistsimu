@@ -26,6 +26,7 @@
 //   registering and sending events. Begin NLSimulatorBase with just 2 APIs
 class NLSimulator : public NLSimulatorBase
 {
+    bool _initCompleted = false;
     EventRouter _simuRouter; // Must be before _factory
     GateFactory _factory;
     using t_pair  = pair<double, unsigned>;
@@ -81,7 +82,12 @@ class NLSimulator : public NLSimulatorBase
     void notify() { _rq_cvar.notify_all(); }
     void wait() { _simuthread.join(); }
 public:
-    void init() { _factory.init(); }
+    bool initCompleted() { return _initCompleted; }
+    void init()
+    {
+        _factory.init();
+        _initCompleted = true;
+    }
     void quit()
     {
         _quit = true;

@@ -7,6 +7,7 @@ class NLSimulatorBase
 public:
     virtual void sendEvent(Event)=0;
     virtual void sendEventImmediate(Event)=0;
+    virtual bool initCompleted()=0;
     virtual EventRouter& router()=0;
 };
 
