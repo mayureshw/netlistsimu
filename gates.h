@@ -90,6 +90,7 @@ public:
     virtual Gate* gate()=0;
     virtual void init()=0;
     virtual void eval()=0;
+    virtual bool initCompleted()=0;
     virtual EventRouter& router()=0;
     virtual NLSimulatorBase* nlsimu()=0;
 };
@@ -99,19 +100,26 @@ typedef map<string,PortBase*> Portmap;
 class Gate
 {
 protected:
+    bool _initCompleted = false;
     Portmap _iportmap;
     Portmap _oportmap;
     unsigned _opid;
     NLSimulatorBase *_nlsimu;
+    virtual void evalOp(PortBase*) {}
     virtual void handleParmap(Parmap&) {}
 public:
+    bool initCompleted() { return _initCompleted; }
     NLSimulatorBase* nlsimu() { return _nlsimu; }
     unsigned opid() { return _opid; }
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers()=0;
-    virtual void eval(PortBase*) {}
     virtual void init() { for(auto ip:_iportmap) ip.second->init(); }
+    void eval(PortBase* port)
+    {
+        evalOp(port);
+        _initCompleted = true;
+    }
     EventRouter& router() { return _nlsimu->router(); }
     PortBase* getPort(string portname)
     {
@@ -172,7 +180,7 @@ protected:
 public:
     void set(bool val)
     {
-        if ( not nlsimu()->initCompleted() or _state != val )
+        if ( not Pin::_port->initCompleted() or _state != val )
         {
             _state = val;
             Pin::_port->notify();
@@ -243,6 +251,7 @@ protected:
     PT *_pins[W];
     bitset<W> _state;
 public:
+    bool initCompleted() { return _gate->initCompleted(); }
     NLSimulatorBase* nlsimu() { return _gate->nlsimu(); }
     EventRouter& router() { return _gate->router(); }
     void init() { for(auto p:_pins) p->init(); }
@@ -305,7 +314,7 @@ protected:
     OPort(O,  4);
 public:
 // See https://github.com/awersatos/AD/blob/master/Library/HDL%20Simulation/Xilinx%20ISE%2012.1%20VHDL%20Libraries/unisim/src/primitive/CARRY4.vhd
-    void eval(PortBase*)
+    void evalOp(PortBase*)
     {
         bool ci_or_cyinit = CI[0] or CYINIT[0];
 
@@ -332,7 +341,7 @@ protected:
     PassiveIPort(D,  1);
     OPort(Q,1);
 public:
-    void eval(PortBase *port)
+    void evalOp(PortBase *port)
     {
         if ( CLR[0] )
         {
@@ -366,7 +375,7 @@ protected:
     IPort(I,1);
     OPort(O,1);
 public:
-    void eval(PortBase*) { O.set(I.state()); }
+    void evalOp(PortBase*) { O.set(I.state()); }
 };
 
 #define LUTSZ 1<<W
@@ -385,7 +394,7 @@ protected:
         _o = initconst.as_bitset();
     }
 public:
-    void eval(PortBase*)
+    void evalOp(PortBase*)
     {
         int ival = 0;
         for(int i=0, mask=1; i<W; i++, mask<<=1)
@@ -412,7 +421,7 @@ protected:
     IPort(I,1);
     OPort(O,1);
 public:
-    void eval(PortBase*) { O.set(I.state()); }
+    void evalOp(PortBase*) { O.set(I.state()); }
 };
 
 class OBUFT : public Gate
@@ -424,7 +433,7 @@ protected:
     IPort(T,1);
     OPort(O,1);
 public:
-    void eval(PortBase*)
+    void evalOp(PortBase*)
     {
         if (T[0]) O.set(I.state());
     }
