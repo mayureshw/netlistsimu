@@ -26,7 +26,6 @@
 //   registering and sending events. Begin NLSimulatorBase with just 2 APIs
 class NLSimulator : public NLSimulatorBase
 {
-    bool _initCompleted = false;
     EventRouter _simuRouter; // Must be before _factory
     GateFactory _factory;
     using t_pair  = pair<double, unsigned>;
@@ -44,12 +43,14 @@ class NLSimulator : public NLSimulatorBase
     random_device _rng;
     uniform_real_distribution<double> _udistr {-1,1};
     bool _quit = false;
+    bool _blocked = false;
     bool simuend() { return _quit and _rq.empty(); }
     bool waitover() { return not _rq.empty() or _quit; }
+    bool blocked() { return _rq.empty() and _blocked; }
     void route(Event eid)
     {
-        _simuRouter.route(eid,0);
         cout << "event:" << eid << endl;
+        _simuRouter.route(eid,0);
     }
     void _simuloop()
     {
@@ -64,17 +65,19 @@ class NLSimulator : public NLSimulatorBase
             auto eid = _rq.top().second;
             _rq.pop();
             _rqmutex.unlock();
-            notify(); // For convenience of waitTillStable
             route(eid);
         }
     }
-    void simuloop() // TODO: This needs some work, here and in petrinet.h
+    void simuloop()
     {
         do {
             _simuloop();
             {
                 unique_lock<mutex> ulockq(_rqmutex);
+                _blocked = true;
+                notify(); // For waitTillStable
                 _rq_cvar.wait(ulockq, [this](){return waitover();});
+                _blocked = false;
             }
         } while ( not simuend() );
     }
@@ -82,13 +85,10 @@ class NLSimulator : public NLSimulatorBase
     void notify() { _rq_cvar.notify_all(); }
     void wait() { _simuthread.join(); }
 public:
-    // TODO: In oscillatory circuits int completion at this level
-    // can be problematic and may have to be shifted to Pin.
-    bool initCompleted() { return _initCompleted; }
     void init()
     {
         _factory.init();
-        _initCompleted = true;
+        waitTillStable();
     }
     void quit()
     {
@@ -108,7 +108,7 @@ public:
     void waitTillStable()
     {
         unique_lock<mutex> ulockq(_rqmutex);
-        _rq_cvar.wait(ulockq, [this](){return _rq.empty();});
+        _rq_cvar.wait(ulockq, [this](){return blocked();});
     }
     template<unsigned W> void setPort(unsigned opid, string portname, bitset<W> val) { _factory.setPort<W>(opid,portname,val); }
     void watch(unsigned opid, string portname) { _factory.watch(opid,portname); }
