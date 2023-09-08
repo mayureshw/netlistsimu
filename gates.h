@@ -209,7 +209,7 @@ public:
     {
         for(int i=0; i<Pin::EVENTTYPS; i++)
         {
-            _eventHandlers[i] = new EventHandler( Pin::router(), Pin::_eids[0],
+            _eventHandlers[i] = new EventHandler( Pin::router(), Pin::_eids[i],
                 [this,i](Event,unsigned long) { this->set(i); } );
             _eventHandlers[i]->start();
         }
