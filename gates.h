@@ -146,7 +146,7 @@ public:
     virtual bool isSysInp() { return false; }
     virtual void markDriven() {}
     virtual void set(bool val) {}
-    virtual void setViaEvent(bool val, NLSimulatorBase *nlsimu) {}
+    virtual void setViaEvent(bool val) {}
     virtual void setEventHandlers() {}
     EventRouter& router() { return _port->router(); }
     NLSimulatorBase* nlsimu() { return _port->nlsimu(); }
@@ -201,10 +201,10 @@ public:
             [this](Event,unsigned long) { this->handle<1>(); } );
         for(int i=0; i<Pin::EVENTTYPS; i++) _eventHandlers[i]->start();
     }
-    void setViaEvent(bool val, NLSimulatorBase *nlsimu)
+    void setViaEvent(bool val)
     {
         auto eid = Pin::getEid( val ? 1 : 0 );
-        nlsimu->sendEvent( eid );
+        Pin::nlsimu()->sendEvent( eid );
     }
     ~IPin()
     {
@@ -671,7 +671,7 @@ public:
                 cout << "set invoked on non system input pin " << opid <<  " " << portname << " " << i << endl;
                 exit(1);
             }
-            pin->setViaEvent( val[i], _nlsimu );
+            pin->setViaEvent( val[i] );
         }
     }
     void watch(unsigned opid, string portname) { getGate(opid)->getPort(portname)->watch(); }
