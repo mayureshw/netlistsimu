@@ -82,6 +82,8 @@ class NLSimulator : public NLSimulatorBase
     void notify() { _rq_cvar.notify_all(); }
     void wait() { _simuthread.join(); }
 public:
+    // TODO: In oscillatory circuits int completion at this level
+    // can be problematic and may have to be shifted to Pin.
     bool initCompleted() { return _initCompleted; }
     void init()
     {

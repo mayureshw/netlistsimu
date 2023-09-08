@@ -141,13 +141,14 @@ private:
 protected:
     PortBase *_port;
     unsigned _eids[EVENTTYPS];
+    virtual void postSet(bool val) {}
 public:
     virtual void init() {}
     virtual bool isSysInp() { return false; }
     virtual void markDriven() {}
-    virtual void set(bool val) {}
     virtual void setViaEvent(bool val) {}
     virtual void setEventHandlers() {}
+    virtual void set(bool)=0;
     EventRouter& router() { return _port->router(); }
     NLSimulatorBase* nlsimu() { return _port->nlsimu(); }
     void setEid(unsigned index, unsigned eid)
@@ -169,6 +170,15 @@ template<unsigned W> class PinState : public Pin
 protected:
     typename bitset<W>::reference _state;
 public:
+    void set(bool val)
+    {
+        if ( not nlsimu()->initCompleted() or _state != val )
+        {
+            _state = val;
+            Pin::_port->notify();
+            postSet(val);
+        }
+    }
     PinState<W>( typename bitset<W>::reference state, PortBase *port )
         : _state(state), Pin(port) {}
 };
@@ -178,28 +188,23 @@ template<unsigned W> class IPin : public PinState<W>
 using PinState<W>::PinState;
     bool _isSysInp = true; // Marked false explicitly if driven
     EventHandler *_eventHandlers[Pin::EVENTTYPS];
-    template<int V> void handle()
-    {
-        PinState<W>::_state = V;
-        Pin::_port->notify();
-        eval();
-    }
 protected:
-    virtual void eval() { Pin::_port->eval(); }
+    void postSet() { Pin::_port->eval(); }
 public:
     // Note: Sole purpose of initializing system input pins is to trigger
     // events such that all combinational outputs are consistent with their
     // inputs. Actual value of initialization doesn't matter.
-    void init() { if ( isSysInp() ) handle<0>(); }
+    void init() { if ( isSysInp() ) PinState<W>::set(0); }
     bool isSysInp() { return _isSysInp; }
     void markDriven() { _isSysInp = false; }
     void setEventHandlers()
     {
-        _eventHandlers[0] = new EventHandler( Pin::router(), Pin::_eids[0],
-            [this](Event,unsigned long) { this->handle<0>(); } );
-        _eventHandlers[1] = new EventHandler( Pin::router(), Pin::_eids[1],
-            [this](Event,unsigned long) { this->handle<1>(); } );
-        for(int i=0; i<Pin::EVENTTYPS; i++) _eventHandlers[i]->start();
+        for(int i=0; i<Pin::EVENTTYPS; i++)
+        {
+            _eventHandlers[i] = new EventHandler( Pin::router(), Pin::_eids[0],
+                [this,i](Event,unsigned long) { this->set(i); } );
+            _eventHandlers[i]->start();
+        }
     }
     void setViaEvent(bool val)
     {
@@ -216,35 +221,17 @@ template<unsigned W> class PassiveIPin : public IPin<W>
 {
 using IPin<W>::IPin;
 protected:
-    void eval() {}
+    void postSet() {}
 };
 
-typedef function<void(bool)> t_setterfn;
 template<unsigned W> class OPin : public PinState<W>
 {
 using PinState<W>::PinState;
-    // For first ever 'set' call we must send the event, later only on state change
-    // Instead of checking a flag every time, we use a function pointer
-    // Does this really pay off or a flag would be cheaper? TODO: Experiment
-    void _do_set(bool val)
+protected:
+    void postSet(bool val)
     {
-        PinState<W>::_state = val;
-        Pin::_port->notify();
         Pin::nlsimu()->sendEventImmediate( Pin::_eids[val] );
     }
-    t_setterfn
-        _set_init = [this](bool val)
-        {
-            _do_set(val);
-            _setter = _set_postinit;
-        },
-        _set_postinit = [this](bool val)
-        {
-            if ( PinState<W>::_state != val ) _do_set(val);
-        },
-        _setter = _set_init;
-public:
-    void set(bool val) { this->_setter(val); }
 };
 
 template<unsigned W, typename PT> class Port : public PortBase
