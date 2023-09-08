@@ -78,7 +78,20 @@ public:
 };
 
 class Pin;
-class PortBase;
+class Gate;
+class PortBase
+{
+public:
+    virtual void setEventHandlers(NLSimulatorBase *)=0;
+    virtual Pin* getPin(unsigned index)=0;
+    virtual void notify()=0;
+    virtual void watch()=0;
+    virtual void unwatch()=0;
+    virtual Gate* gate()=0;
+    virtual void init()=0;
+    virtual void eval()=0;
+};
+
 
 typedef map<string,PortBase*> Portmap;
 class Gate
@@ -95,7 +108,7 @@ public:
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers()=0;
     virtual void eval(PortBase*) {}
-    virtual void init() {}
+    virtual void init() { for(auto ip:_iportmap) ip.second->init(); }
     virtual ~Gate() {}
     PortBase* getPort(string portname)
     {
@@ -106,18 +119,6 @@ public:
         cout << "Could not find port " << portname << endl;
         exit(1);
     }
-};
-
-class PortBase
-{
-public:
-    virtual void setEventHandlers(NLSimulatorBase *)=0;
-    virtual Pin* getPin(unsigned index)=0;
-    virtual void notify()=0;
-    virtual void watch()=0;
-    virtual void unwatch()=0;
-    virtual Gate* gate()=0;
-    virtual void eval()=0;
 };
 
 class Pin
@@ -137,6 +138,7 @@ protected:
     PortBase *_port;
     unsigned _eids[EVENTTYPS];
 public:
+    virtual void init() {}
     virtual bool isSysInp() { return false; }
     virtual void markDriven() {}
     virtual void set(bool val, NLSimulatorBase *nlsimu) {}
@@ -179,6 +181,10 @@ using PinState<W>::PinState;
 protected:
     virtual void eval() { Pin::_port->eval(); }
 public:
+    void init()
+    {
+        if ( isSysInp() ); // TODO
+    }
     bool isSysInp() { return _isSysInp; }
     void markDriven() { _isSysInp = false; }
     void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
@@ -244,6 +250,7 @@ protected:
     PT *_pins[W];
     bitset<W> _state;
 public:
+    void init() { for(auto p:_pins) p->init(); }
     void eval() { _gate->eval(this); }
     Gate* gate() { return _gate; }
     void watch() { _watch = true; }
