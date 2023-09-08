@@ -82,7 +82,7 @@ class Gate;
 class PortBase
 {
 public:
-    virtual void setEventHandlers(NLSimulatorBase *)=0;
+    virtual void setEventHandlers()=0;
     virtual Pin* getPin(unsigned index)=0;
     virtual void notify()=0;
     virtual void watch()=0;
@@ -90,6 +90,7 @@ public:
     virtual Gate* gate()=0;
     virtual void init()=0;
     virtual void eval()=0;
+    virtual EventRouter& router()=0;
 };
 
 
@@ -103,13 +104,14 @@ protected:
     NLSimulatorBase *_nlsimu;
     virtual void handleParmap(Parmap&) {}
 public:
+    NLSimulatorBase* nlsimu() { return _nlsimu; }
     unsigned opid() { return _opid; }
     virtual Pin* getIPin(string portname, unsigned pinindex)=0;
     virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers()=0;
     virtual void eval(PortBase*) {}
     virtual void init() { for(auto ip:_iportmap) ip.second->init(); }
-    virtual ~Gate() {}
+    EventRouter& router() { return _nlsimu->router(); }
     PortBase* getPort(string portname)
     {
         auto it1 = _iportmap.find(portname);
@@ -119,6 +121,7 @@ public:
         cout << "Could not find port " << portname << endl;
         exit(1);
     }
+    virtual ~Gate() {}
 };
 
 class Pin
@@ -143,7 +146,8 @@ public:
     virtual void markDriven() {}
     virtual void set(bool val, NLSimulatorBase *nlsimu) {}
     virtual void setViaEvent(bool val, NLSimulatorBase *nlsimu) {}
-    virtual void setEventHandlers(Gate *, NLSimulatorBase *) {}
+    virtual void setEventHandlers() {}
+    EventRouter& router() { return _port->router(); }
     void setEid(unsigned index, unsigned eid)
     {
         validateIndex(index);
@@ -187,12 +191,12 @@ public:
     void init() { if ( isSysInp() ) handle<0>(); }
     bool isSysInp() { return _isSysInp; }
     void markDriven() { _isSysInp = false; }
-    void setEventHandlers(Gate *gate, NLSimulatorBase *nlsimu)
+    void setEventHandlers()
     {
-        _eventHandlers[0] = new EventHandler( nlsimu->router(), Pin::_eids[0],
-            [this,gate](Event,unsigned long) { this->handle<0>(); } );
-        _eventHandlers[1] = new EventHandler( nlsimu->router(), Pin::_eids[1],
-            [this,gate](Event,unsigned long) { this->handle<1>(); } );
+        _eventHandlers[0] = new EventHandler( Pin::router(), Pin::_eids[0],
+            [this](Event,unsigned long) { this->handle<0>(); } );
+        _eventHandlers[1] = new EventHandler( Pin::router(), Pin::_eids[1],
+            [this](Event,unsigned long) { this->handle<1>(); } );
         for(int i=0; i<Pin::EVENTTYPS; i++) _eventHandlers[i]->start();
     }
     void setViaEvent(bool val, NLSimulatorBase *nlsimu)
@@ -250,6 +254,7 @@ protected:
     PT *_pins[W];
     bitset<W> _state;
 public:
+    EventRouter& router() { return _gate->router(); }
     void init() { for(auto p:_pins) p->init(); }
     void eval() { _gate->eval(this); }
     Gate* gate() { return _gate; }
@@ -275,9 +280,9 @@ public:
         }
         return _pins[index];
     }
-    void setEventHandlers(NLSimulatorBase *nlsimu)
+    void setEventHandlers()
     {
-        for(int i=0; i<W; i++) _pins[i]->setEventHandlers(_gate,nlsimu);
+        for(int i=0; i<W; i++) _pins[i]->setEventHandlers();
     }
     ~Port()
     {
@@ -510,7 +515,7 @@ template<typename T> class GateMethods : public T
 public:
     void setEventHandlers()
     {
-        for(auto ip:T::_iportmap) ip.second->setEventHandlers(Gate::_nlsimu);
+        for(auto ip:T::_iportmap) ip.second->setEventHandlers();
     }
     // TODO: ideally should have getPin<bool>, but no virtual function templates allowed. Any other way?
     Pin* getIPin(string portname, unsigned pinindex) { return getPin<true>(portname,pinindex); }
