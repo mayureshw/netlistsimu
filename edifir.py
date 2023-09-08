@@ -66,6 +66,21 @@ class EdifIR:
         instance = self.pin2inst(p)
         iid = self.instid(self.instname(instance))
         return self.pinid(iid,pname,p.index())
+    def stabCEP(self,a,b,e): return PTerm( 'cep', [
+        PTerm( 'iab', [a,b] ),
+        PTerm( '==', [ PTerm('#',[e]),0]),
+        [],
+        PList([ PTerm('log', [ PAtom('INSTABILITY')]) ])
+        ])
+    def processCEP(self,driver,receiver):
+        driver0 = self.eventid(driver,0)
+        driver1 = self.eventid(driver,1)
+        receiver0 = self.eventid(receiver,0)
+        receiver1 = self.eventid(receiver,1)
+        term = self.stabCEP(driver0,receiver0,driver1)
+        self.writeCep(str(term)+'.')
+        term = self.stabCEP(driver1,receiver1,driver0)
+        self.writeCep(str(term)+'.')
     def processWire(self,w):
         driver = self.wire2driver(w)
         if driver == None: return
@@ -76,10 +91,12 @@ class EdifIR:
         if len(receiverids) > 0:
             term = PTerm('net',[driverid,PList(receiverids)])
             self.writeDat(str(term)+'.')
+        for receiverid in receiverids: self.processCEP(driverid,receiverid)
     def print2prolog(self):
         for inst in  self.netlist.get_instances(): self.processInst(inst)
         for w in self.netlist.get_wires(): self.processWire(w)
     def writeDat(self,line): self.datfile.write(line+'\n')
+    def writeCep(self,line): self.cepfile.write(line+'\n')
     def __init__(self, filename):
         self.netlist = sdn.parse(filename)
         flatten(self.netlist)
