@@ -3,6 +3,7 @@ import spydrnet as sdn
 from spydrnet.flatten import flatten
 from pterms import *
 from itertools import groupby
+from pathlib import Path
 
 class EdifIR:
     def instid(self,instname): return self.instids.setdefault(instname,len(self.instids))
@@ -13,12 +14,12 @@ class EdifIR:
     def processEvent(self,pinid,tv):
         eid = self.eventid(pinid,tv)
         term = PTerm( 'ev', [ eid, pinid, tv ] )
-        print(str(term)+'.')
+        self.writeDat(str(term)+'.')
     def processPin(self,direction,iid,pname,pinindex):
         functor = direction + 'pin'
         pinid = self.pinid(iid,pname,pinindex)
         term = PTerm(functor,[pinid,iid,PAtom(pname),pinindex])
-        print(str(term)+'.')
+        self.writeDat(str(term)+'.')
         for tv in [0,1]: self.processEvent(pinid,tv)
     def processPort(self,iid,port):
         if port.direction not in {sdn.IN,sdn.OUT}:
@@ -37,9 +38,9 @@ class EdifIR:
             for propd in inst.data.get('EDIF.properties',[])
             )
         term = PTerm('opi',[iid, typ, generics])
-        print(str(term)+'.')
+        self.writeDat(str(term)+'.')
         term = PTerm('iname',[iid, PAtom(lname)])
-        print(str(term)+'.')
+        self.writeDat(str(term)+'.')
         for port in inst.get_ports(): self.processPort(iid,port)
     def wire2driver(self,w):
         drivers = w.get_driver()
@@ -74,13 +75,19 @@ class EdifIR:
             for p in w.pins if p != driver and isinstance(p,sdn.OuterPin) ]
         if len(receiverids) > 0:
             term = PTerm('net',[driverid,PList(receiverids)])
-            print(str(term)+'.')
+            self.writeDat(str(term)+'.')
     def print2prolog(self):
         for inst in  self.netlist.get_instances(): self.processInst(inst)
         for w in self.netlist.get_wires(): self.processWire(w)
+    def writeDat(self,line): self.datfile.write(line+'\n')
     def __init__(self, filename):
         self.netlist = sdn.parse(filename)
         flatten(self.netlist)
         self.instids = {}
         self.pinids = {}
         self.eventids = {}
+        inppath = Path(filename)
+        datfilename = inppath.stem + ".dat"
+        self.datfile = open(datfilename, 'w')
+        cepfilename = inppath.stem + ".cep"
+        self.cepfile = open(cepfilename, 'w')
