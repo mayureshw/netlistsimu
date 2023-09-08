@@ -124,8 +124,11 @@ public:
     bool initCompleted() { return _initCompleted; }
     NLSimulatorBase* nlsimu() { return _nlsimu; }
     unsigned opid() { return _opid; }
-    virtual void setEventHandlers()=0;
     virtual void init() { for(auto ip:_iportmap) ip.second->init(); }
+    void setEventHandlers()
+    {
+        for(auto ip:_iportmap) ip.second->setEventHandlers();
+    }
     void eval(PortBase* port)
     {
         evalOp(port);
@@ -510,10 +513,6 @@ template<typename T> class GateMethods : public T
         T::handleParmap(parmap);
     }
 public:
-    void setEventHandlers()
-    {
-        for(auto ip:T::_iportmap) ip.second->setEventHandlers();
-    }
     GateMethods<T>(unsigned opid, Parlist& parlist, NLSimulatorBase *nlsimu)
     {
         Gate::_opid = opid;
