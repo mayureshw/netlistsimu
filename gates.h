@@ -108,11 +108,22 @@ protected:
     virtual void evalOp(PortBase*) {}
     virtual void handleParmap(Parmap&) {}
 public:
+    template<bool isipin> Pin* getPin(string portname, unsigned pinindex)
+    {
+        Portmap *pm;
+        if constexpr (isipin) pm = &_iportmap;
+        else pm = &_oportmap;
+        auto it = pm->find(portname);
+        if ( it == pm->end() )
+        {
+            cout << "getPin received invalid portname " << portname << " " << Gate::_opid << endl;
+            exit(1);
+        }
+        return it->second->getPin(pinindex);
+    }
     bool initCompleted() { return _initCompleted; }
     NLSimulatorBase* nlsimu() { return _nlsimu; }
     unsigned opid() { return _opid; }
-    virtual Pin* getIPin(string portname, unsigned pinindex)=0;
-    virtual Pin* getOPin(string portname, unsigned pinindex)=0;
     virtual void setEventHandlers()=0;
     virtual void init() { for(auto ip:_iportmap) ip.second->init(); }
     void eval(PortBase* port)
@@ -498,27 +509,11 @@ template<typename T> class GateMethods : public T
         validateParmap(parmap);
         T::handleParmap(parmap);
     }
-    template<bool isipin> Pin* getPin(string portname, unsigned pinindex)
-    {
-        Portmap *pm;
-        if constexpr (isipin) pm = &(T::_iportmap);
-        else pm = &(T::_oportmap);
-        auto it = pm->find(portname);
-        if ( it == pm->end() )
-        {
-            cout << "getPin received invalid portname " << portname << " " << Gate::_opid << endl;
-            exit(1);
-        }
-        return it->second->getPin(pinindex);
-    }
 public:
     void setEventHandlers()
     {
         for(auto ip:T::_iportmap) ip.second->setEventHandlers();
     }
-    // TODO: ideally should have getPin<bool>, but no virtual function templates allowed. Any other way?
-    Pin* getIPin(string portname, unsigned pinindex) { return getPin<true>(portname,pinindex); }
-    Pin* getOPin(string portname, unsigned pinindex) { return getPin<false>(portname,pinindex); }
     GateMethods<T>(unsigned opid, Parlist& parlist, NLSimulatorBase *nlsimu)
     {
         Gate::_opid = opid;
@@ -627,11 +622,7 @@ class GateFactory
         auto portname = get<3>(pint);
         auto pinindex = get<4>(pint);
         auto gate = getGate(opid);
-        Pin *pin;
-        if constexpr ( isipin )
-            pin = gate->getIPin(portname,pinindex);
-        else
-            pin = gate->getOPin(portname,pinindex);
+        auto pin = gate->getPin<isipin>(portname,pinindex);
         pinmap.emplace(pinid,pin);
     }
     void process_opi(t_opi& opit)
@@ -662,7 +653,7 @@ public:
         auto gate = getGate(opid);
         for( int i=0; i<W; i++ )
         {
-            auto pin = gate->getIPin(portname, i);
+            auto pin = gate->getPin<true>(portname, i);
             if ( not pin->isSysInp() )
             {
                 cout << "set invoked on non system input pin " << opid <<  " " << portname << " " << i << endl;
