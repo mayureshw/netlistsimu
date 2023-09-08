@@ -535,12 +535,13 @@ class Net
 {
     list<unsigned> _tevents;
     EventHandler *_eventHandler;
-    void relay(NLSimulatorBase *nlsimu) { for(auto te:_tevents) nlsimu->sendEvent(te); }
+    NLSimulatorBase* _nlsimu;
+    void relay() { for(auto te:_tevents) _nlsimu->sendEvent(te); }
 public:
-    Net(unsigned sevent, list<unsigned> tevents, NLSimulatorBase *nlsimu) : _tevents(tevents)
+    Net(unsigned sevent, list<unsigned> tevents, NLSimulatorBase *nlsimu) : _tevents(tevents), _nlsimu(nlsimu)
     {
-        _eventHandler = new EventHandler( nlsimu->router(), sevent,
-            [this,nlsimu](Event,unsigned long) { this->relay(nlsimu); } );
+        _eventHandler = new EventHandler( _nlsimu->router(), sevent,
+            [this](Event,unsigned long) { this->relay(); } );
         _eventHandler->start();
     }
     ~Net() { delete _eventHandler; }
