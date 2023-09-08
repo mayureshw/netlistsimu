@@ -141,7 +141,7 @@ private:
 protected:
     PortBase *_port;
     unsigned _eids[EVENTTYPS];
-    virtual void postSet(bool val) {}
+    virtual void postSet(bool)=0;
 public:
     virtual void init() {}
     virtual bool isSysInp() { return false; }
@@ -189,7 +189,7 @@ using PinState<W>::PinState;
     bool _isSysInp = true; // Marked false explicitly if driven
     EventHandler *_eventHandlers[Pin::EVENTTYPS];
 protected:
-    void postSet() { Pin::_port->eval(); }
+    void postSet(bool) { Pin::_port->eval(); }
 public:
     // Note: Sole purpose of initializing system input pins is to trigger
     // events such that all combinational outputs are consistent with their
@@ -221,7 +221,7 @@ template<unsigned W> class PassiveIPin : public IPin<W>
 {
 using IPin<W>::IPin;
 protected:
-    void postSet() {}
+    void postSet(bool) {}
 };
 
 template<unsigned W> class OPin : public PinState<W>
