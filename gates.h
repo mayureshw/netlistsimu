@@ -467,6 +467,10 @@ public:
     }
 };
 
+// Having a class at the bottom of the hierarchy allows
+// accessing specific gates attributes like _defaults, _nodefaults which won't
+// be visible from base class and Gate specific methods like handleParmap can't
+// be called from constuctor by making virtual.
 template<typename T> class GateMethods : public T
 {
     void mergeDefaults(Parmap& parmap)
