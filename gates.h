@@ -125,10 +125,7 @@ public:
     NLSimulatorBase* nlsimu() { return _nlsimu; }
     unsigned opid() { return _opid; }
     virtual void init() { for(auto ip:_iportmap) ip.second->init(); }
-    void setEventHandlers()
-    {
-        for(auto ip:_iportmap) ip.second->setEventHandlers();
-    }
+    void setEventHandlers() { for(auto ip:_iportmap) ip.second->setEventHandlers(); }
     void eval(PortBase* port)
     {
         evalOp(port);
@@ -250,10 +247,7 @@ template<unsigned W> class OPin : public PinState<W>
 {
 using PinState<W>::PinState;
 protected:
-    void postSet(bool val)
-    {
-        Pin::nlsimu()->sendEventImmediate( Pin::_eids[val] );
-    }
+    void postSet(bool val) { Pin::nlsimu()->sendEventImmediate( Pin::_eids[val] ); }
 };
 
 template<unsigned W, typename PT> class Port : public PortBase
