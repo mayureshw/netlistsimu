@@ -91,6 +91,7 @@ public:
     virtual void init()=0;
     virtual void eval()=0;
     virtual EventRouter& router()=0;
+    virtual NLSimulatorBase* nlsimu()=0;
 };
 
 
@@ -144,10 +145,11 @@ public:
     virtual void init() {}
     virtual bool isSysInp() { return false; }
     virtual void markDriven() {}
-    virtual void set(bool val, NLSimulatorBase *nlsimu) {}
+    virtual void set(bool val) {}
     virtual void setViaEvent(bool val, NLSimulatorBase *nlsimu) {}
     virtual void setEventHandlers() {}
     EventRouter& router() { return _port->router(); }
+    NLSimulatorBase* nlsimu() { return _port->nlsimu(); }
     void setEid(unsigned index, unsigned eid)
     {
         validateIndex(index);
@@ -217,32 +219,32 @@ protected:
     void eval() {}
 };
 
-typedef function<void(bool,NLSimulatorBase*)> t_setterfn;
+typedef function<void(bool)> t_setterfn;
 template<unsigned W> class OPin : public PinState<W>
 {
 using PinState<W>::PinState;
     // For first ever 'set' call we must send the event, later only on state change
     // Instead of checking a flag every time, we use a function pointer
     // Does this really pay off or a flag would be cheaper? TODO: Experiment
-    void _do_set(bool val, NLSimulatorBase *nlsimu)
+    void _do_set(bool val)
     {
         PinState<W>::_state = val;
         Pin::_port->notify();
-        nlsimu->sendEventImmediate( Pin::_eids[val] );
+        Pin::nlsimu()->sendEventImmediate( Pin::_eids[val] );
     }
     t_setterfn
-        _set_init = [this](bool val, NLSimulatorBase *nlsimu)
+        _set_init = [this](bool val)
         {
-            _do_set(val,nlsimu);
+            _do_set(val);
             _setter = _set_postinit;
         },
-        _set_postinit = [this](bool val, NLSimulatorBase *nlsimu)
+        _set_postinit = [this](bool val)
         {
-            if ( PinState<W>::_state != val ) _do_set(val,nlsimu);
+            if ( PinState<W>::_state != val ) _do_set(val);
         },
         _setter = _set_init;
 public:
-    void set(bool val, NLSimulatorBase *nlsimu) { this->_setter(val,nlsimu); }
+    void set(bool val) { this->_setter(val); }
 };
 
 template<unsigned W, typename PT> class Port : public PortBase
@@ -254,6 +256,7 @@ protected:
     PT *_pins[W];
     bitset<W> _state;
 public:
+    NLSimulatorBase* nlsimu() { return _gate->nlsimu(); }
     EventRouter& router() { return _gate->router(); }
     void init() { for(auto p:_pins) p->init(); }
     void eval() { _gate->eval(this); }
@@ -267,9 +270,9 @@ public:
         if ( _watch )
             cout << "watch:" << _gate->opid() << ":" << _name << ":" << _state << endl;
     }
-    void set(bitset<W>& val, NLSimulatorBase *nlsimu)
+    void set(bitset<W>& val)
     {
-        for(int i=0; i<W; i++) _pins[i]->set(val[i], nlsimu);
+        for(int i=0; i<W; i++) _pins[i]->set(val[i]);
     }
     Pin* getPin(unsigned index)
     {
@@ -322,12 +325,12 @@ public:
         bitset<4> CO_out;
         CO_out[0] = S[0] ? ci_or_cyinit : DI[0];
         for(int i=1;i<4;i++)  CO_out[i] = S[i] ? CO_out[i-1] : DI[i];
-        CO.set(CO_out,_nlsimu);
+        CO.set(CO_out);
 
         bitset<4> O_out;
         O_out[0] = S[0] ^ ci_or_cyinit;
         for(int i=1;i<4;i++)  O_out[i] = S[i] ^ CO_out[i-1];
-        O.set(O_out,_nlsimu);
+        O.set(O_out);
     }
 };
 
@@ -347,10 +350,10 @@ public:
         if ( CLR[0] )
         {
             bitset<1> val = 0;
-            Q.set(val,_nlsimu);
+            Q.set(val);
         }
         else if ( port == &C and CE[0] and C[0] )
-            Q.set(D.state(),_nlsimu);
+            Q.set(D.state());
     }
 };
 
@@ -364,7 +367,7 @@ public:
     void init()
     {
         bitset<1> val = 0;
-        G.set(val,_nlsimu);
+        G.set(val);
     }
 };
 
@@ -376,7 +379,7 @@ protected:
     IPort(I,1);
     OPort(O,1);
 public:
-    void eval(PortBase*) { O.set(I.state(),_nlsimu); }
+    void eval(PortBase*) { O.set(I.state()); }
 };
 
 #define LUTSZ 1<<W
@@ -401,7 +404,7 @@ public:
         for(int i=0, mask=1; i<W; i++, mask<<=1)
             if ( (*I[i])[0] ) ival+=mask;
         bitset<1> o = { _o[ival] };
-        O.set(o,_nlsimu);
+        O.set(o);
     }
     LUT<W>()
     {
@@ -422,7 +425,7 @@ protected:
     IPort(I,1);
     OPort(O,1);
 public:
-    void eval(PortBase*) { O.set(I.state(),_nlsimu); }
+    void eval(PortBase*) { O.set(I.state()); }
 };
 
 class OBUFT : public Gate
@@ -436,7 +439,7 @@ protected:
 public:
     void eval(PortBase*)
     {
-        if (T[0]) O.set(I.state(),_nlsimu);
+        if (T[0]) O.set(I.state());
     }
 };
 
@@ -450,7 +453,7 @@ public:
     void init()
     {
         bitset<1> val = 1;
-        P.set(val,_nlsimu);
+        P.set(val);
     }
 };
 
