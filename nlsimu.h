@@ -6,28 +6,37 @@
 #include <queue>
 #include <random>
 #include <condition_variable>
+#include <filesystem>
 #include "gates.h"
+#include "intervals.h"
 
-// TODO: Complete simulator without CEP first.
-// When introducing CEP:
-// IntervalManager requires StateIf, for now use NLSimulator as StateIf, decide later
-// Like in vc2pn, _intervalManager->route will be a listener to the events in the simulator
-// IntervalManager has its own EventRouter instance, which is different from _simuRouter
-//
-// NLSimulator flow:
-// - Decide who wants to be the event handler: pin/port?
-// - They can instantiate EventHandler for each event (register separately for 0 and 1)
-// - On an event on IPin, trigger eval() of the gate
-// - On state change on OPin send new event
-// - Net will register for source event and in the handler create target events
-// - When creating new events, don't send them to router directly, send them to simulator
-// - The simulator will pick events from a priority queue and send them to the router
-// - It is convenient to send just NLSimulatorBase to factory and use it for both
-//   registering and sending events. Begin NLSimulatorBase with just 2 APIs
+class StateIfProxy : public CEPStateIf
+{
+public:
+    void* getStatePtr(vector<int>&)
+    {
+        cout << "CEPStateIf::getStatePtr not implemented" << endl;
+        exit(1);
+    }
+    Etyp getStateTyp(vector<int>&)
+    {
+        cout << "CEPStateIf::getStateTyp not implemented" << endl;
+        exit(1);
+    }
+    void quit()
+    {
+        cout << "CEPStateIf::quit not implemented" << endl;
+        exit(1);
+    }
+};
+
 class NLSimulator : public NLSimulatorBase
 {
+    StateIfProxy _stateif;
+    IntervalManager *_intervalManager;
     EventRouter _simuRouter; // Must be before _factory
     GateFactory _factory;
+    string _basename;
     using t_pair  = pair<double, unsigned>;
     // Saves the overhead of comparing 2nd member of the pair
     class PriorityLT
@@ -50,6 +59,7 @@ class NLSimulator : public NLSimulatorBase
     void route(Event eid)
     {
         cout << "event:" << eid << endl;
+        _intervalManager->route(eid,0);
         _simuRouter.route(eid,0);
     }
     void _simuloop()
@@ -116,7 +126,12 @@ public:
     EventRouter& router() { return _simuRouter; }
     NLSimulator(string netlistir) : _factory(netlistir,this)
     {
+        filesystem::path irpath(netlistir);
+        _basename = irpath.stem();
+        string cepfile = _basename + ".cep";
+        _intervalManager = new IntervalManager( _basename, &_stateif );
     }
+    ~NLSimulator() { delete _intervalManager; }
 };
 
 #endif
